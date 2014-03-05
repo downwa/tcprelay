@@ -1,0 +1,43 @@
+<?xml version="1.0"?>
+
+<makefile>
+  <set-srcdir>src</set-srcdir>
+  <set var="BUILDDIR">build</set>
+
+  <option name="DEBUG">
+    <values>0,1</values>
+    <values-description>Release,Debug</values-description>
+    <default-value>0</default-value>
+  </option>
+  <set var="DEBUG_FLAG">
+    <if cond="DEBUG=='0'">off</if>
+    <if cond="DEBUG=='1'">on</if>
+  </set>
+  <set var="OPTIMIZE_FLAG">
+    <if cond="DEBUG=='0'">size</if>
+    <if cond="DEBUG=='1'">off</if>
+  </set>
+  <set var="BUILD">
+    <if cond="DEBUG=='0'">release</if>
+    <if cond="DEBUG=='1'">debug</if>
+  </set>
+
+  <exe id="tcprelay">
+    <if cond="COMPILER=='gcc'">
+      <echo>gcc in use => adding some high level warning flags</echo>
+      <cxxflags>-Wextra -Wuninitialized</cxxflags>
+    </if>
+    <app-type>console</app-type>
+    <headers>tcprelay.h
+    </headers>
+    <sources>tcprelay.c
+    </sources>
+    <warnings>max</warnings>
+    <debug-info>$(DEBUG_FLAG)</debug-info>
+    <optimize>$(OPTIMIZE_FLAG)</optimize>
+    <sys-lib>Ws2_32</sys-lib>
+    <sys-lib>Advapi32</sys-lib>
+    <sys-lib>Shell32</sys-lib>
+  </exe>
+</makefile>
+

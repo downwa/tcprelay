@@ -1,0 +1,131 @@
+Content-type: text/html
+
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML><HEAD><TITLE>Man page of tcprelay</TITLE>
+</HEAD><BODY>
+<H1>tcprelay</H1>
+Section: User Commands  (1)<BR>Updated: version 1.2<BR><A HREF="#index">Index</A>
+<A HREF="/cgi-bin/man/man2html">Return to Main Contents</A><HR>
+
+<P>
+<A NAME="lbAB">&nbsp;</A>
+<H2>NAME</H2>
+
+<DL COMPACT>
+<DT>tcprelay - a program to redirect TCP connections<DD>
+<P>
+</DL>
+<A NAME="lbAC">&nbsp;</A>
+<H2>SYNOPSIS</H2>
+
+<DL COMPACT>
+<DT><B>tcprelay</B> -s server[:port] [-p port] [<I>OPTIONS</I>]...<DD>
+<P>
+</DL>
+<A NAME="lbAD">&nbsp;</A>
+<H2>DESCRIPTION</H2>
+
+<DL COMPACT>
+<DT>tcprelay relays TCP traffic between a server and a client, logging all<DD>
+exchanged data in between.
+<P>
+</DL>
+<A NAME="lbAE">&nbsp;</A>
+<H2>OPTIONS</H2>
+
+<DL COMPACT>
+<DT><B>-h,&nbsp;--help</B>
+
+<DD>
+Display a quick help screen and exit.
+<DT><B>-v&nbsp;--version</B>
+
+<DD>
+Display version information and exit.
+<DT><B>-V,&nbsp;--verbose</B>
+
+<DD>
+Be more talkative.
+<DT><B>-q,&nbsp;--quiet</B>
+
+<DD>
+Be less talkative.
+<DT><B>-s,&nbsp;--server&nbsp;</B><I>server</I>
+
+<DD>
+Connect to <I>server</I> when an incoming connection is received on
+the listening port. Can also be written server:port to specify the
+port to connect to (by default, it is the listening port.)
+<DT><B>-m,&nbsp;--mirror</B>
+
+<DD>
+Run in mirror mode. Simply send back received bytes to the client.
+Assumed if -s option is not used.
+<DT><B>-p,&nbsp;--listen-port&nbsp;</B><I>port</I>
+
+<DD>
+Listen on <I>port</I> to accept incoming connections.
+<DT><B>-r,&nbsp;--run-once</B>
+
+<DD>
+Relay one connection and when it is finished, exit instead of
+re-entering listen mode to accept incoming connections.
+<DT><B>-t,&nbsp;--telnet</B>
+
+<DD>
+Assume traffic is telnet-style and output log accordingly. Without this
+option, the traffic is logged in binary form (hex code of characters is
+displayed), with this option, lines are written. It is useful to log
+traffic of telnet-style protocols like SMTP, POP3, and so on.
+By default, the traffic is expected to be raw binary (no telnet-style.)
+<DT><B>-b,&nbsp;--buf-size&nbsp;</B><I>size</I>
+
+<DD>
+Sets the network traffic bufer size to <I>size</I> in bytes. 10,000 by
+default.
+<DT><B>--timeout </B><I>duration</I>
+
+<DD>
+Sets the connection timeout to <I>duration</I>, in seconds. 5 by default.
+<DT><B>-l,&nbsp;--log-file&nbsp;</B><I>file</I>
+
+<DD>
+Write the log in <I>file</I>. tcprelay.log (in current working directory)
+by default.
+<DT><B>-n,&nbsp;--nodisplay-log</B>
+
+<DD>
+Don't output the log on the screen. Done by default.
+</DL>
+<A NAME="lbAF">&nbsp;</A>
+<H2>INITIALIZATION FILES</H2>
+
+<DL COMPACT>
+<DT>None.<DD>
+</DL>
+<A NAME="lbAG">&nbsp;</A>
+<H2>AUTHOR</H2>
+
+<DL COMPACT>
+<DT>Written by Sébastien Millet &lt;<A HREF="mailto:sebastien.millet1@club-internet.fr">sebastien.millet1@club-internet.fr</A>&gt;.<DD>
+<DT>Permission is granted to copy, distribute and/or modify this document under the terms of the GNU General Public License, Version 3 published by the Free Software Foundation.<DD>
+<P>
+</DL>
+
+<HR>
+<A NAME="index">&nbsp;</A><H2>Index</H2>
+<DL>
+<DT><A HREF="#lbAB">NAME</A><DD>
+<DT><A HREF="#lbAC">SYNOPSIS</A><DD>
+<DT><A HREF="#lbAD">DESCRIPTION</A><DD>
+<DT><A HREF="#lbAE">OPTIONS</A><DD>
+<DT><A HREF="#lbAF">INITIALIZATION FILES</A><DD>
+<DT><A HREF="#lbAG">AUTHOR</A><DD>
+</DL>
+<HR>
+This document was created by
+<A HREF="/cgi-bin/man/man2html">man2html</A>,
+using the manual pages.<BR>
+Time: 23:24:23 GMT, November 30, 2012
+</BODY>
+</HTML>

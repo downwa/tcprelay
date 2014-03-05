@@ -1,0 +1,20 @@
+2014-03-03 Warren Downs <wdowns@choggiung.com>
+
+	* Release 1.2-wed built
+	* Added support for concurrent sessions, ability to disable data logging, ability to track source IP address by server
+
+2012-01-12 Sébastien Millet <sebastien.millet1@club-internet.fr>
+
+	* Release 1.2 built
+	* Added mirror mode
+
+2012-03-03 Sébastien Millet <sebastien.millet1@club-internet.fr>
+
+	* Release 1.1 built
+	* Fixed a few minor issues in the source
+
+2012-02-19 Sébastien Millet <sebastien.millet1@club-internet.fr>
+
+	* Release 1.0 built
+	* 'autotool'ed tcprelay
+

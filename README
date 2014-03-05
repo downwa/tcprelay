@@ -1,0 +1,88 @@
+
+   tcprelay, a portable TCP connection relaying and log program
+   ============================================================
+
+$Date: 2012-03-03 13:40:26 +0100 (sam. 03 mars 2012) $
+
+Contents:
+
+      I. WHAT IS TCPRELAY?
+     II. WHY TCPRELAY?
+    III. LICENCE
+     IV. COMPILATION AND INSTALLATION
+      V. TRAFFIC SPELLING
+
+
+
+I.    WHAT IS TCPRELAY?
+
+It is meant to relay TCP traffic between a server and a client, logging all
+exchanged data in between.
+
+
+
+II.   WHY TCPRELAY?
+
+Programs like tcpdump, Ethereal and the like make it difficult to simply log
+traffic exchanged over TCP between two end points. This program simply
+performs a forward between a server and a client and logs it.
+
+The primary purpose is to log the traffic, so as to see what is going on
+through an SMTP connection for example.
+In addition, as it relays traffic, it allows to do "pass-through" networking
+on top of TCP.
+
+The logging of the traffic is done in binary format by default, you can also
+get telnet-style logging, assuming the traffic is made of printable lines
+(suitable for traffic like SMTP, POP3, etc.)
+
+It provides similar functionalities to tcptunnel, of Clemens Fuchslocher,
+available here:
+    http://www.vakuumverpackt.de/tcptunnel/
+
+
+
+III.  LICENCE
+
+See COPYING file that comes along with the package the program belongs to.
+
+
+
+IV.   COMPILATION AND INSTALLATION
+
+- Linux
+
+The file of name INSTALL, distributed with tcprelay source files, gives
+instructions to compile and install the program, using the usual
+    ./configure
+    make
+    make install
+sequence.
+This INSTALL file is the one provided by default by autotools.
+
+- Windows
+
+You have to install Mingw and run
+    mingw32-make.exe -f makefile.gcc
+Mingw is licensed under GPL mostly (as of beginning of 2012), its homepage is
+    http://www.mingw.org
+
+Borland was not tested, neither Visual C++. If ever used, one showstopper to
+fix will be the getopt library, used to parse long options.
+
+Mingw makefile generation
+
+    There is no need to recreate makefile.gcc, if ever you wish to do it any
+    way, you have to install Bakefile and run the batch
+        gen-win-makefile.cmd
+    Bakefile is a system allowing multi-platforms control of compilation, you
+    can find it here:
+        http://www.bakefile.org
+
+
+
+V.    TRAFFIC SPELLING
+
+It takes two 'f' in English, one in French.
+Yes.
+

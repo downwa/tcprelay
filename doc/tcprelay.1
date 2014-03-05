@@ -1,0 +1,75 @@
+.\" Written by Sébastien Millet
+.\"
+.TH tcprelay 1 "version 1.2" "December 2012"
+
+.SH NAME
+.TP
+tcprelay \- a program to redirect TCP connections
+
+.SH SYNOPSIS
+.TP
+\fBtcprelay\fP -s server[:port] [-p port] [\fIOPTIONS\fP]...
+
+.SH DESCRIPTION
+.TP
+tcprelay relays TCP traffic between a server and a client, logging all
+exchanged data in between.
+
+.SH OPTIONS
+.TP
+.B \-h,\ \-\-help
+Display a quick help screen and exit.
+.TP
+.B \-v\ \-\-version
+Display version information and exit.
+.TP
+.B \-V,\ \-\-verbose
+Be more talkative.
+.TP
+.B \-q,\ \-\-quiet
+Be less talkative.
+.TP
+.B \-s,\ \-\-server\ \fIserver\fP
+Connect to \fIserver\fP when an incoming connection is received on
+the listening port. Can also be written server:port to specify the
+port to connect to (by default, it is the listening port.)
+.TP
+.B \-m,\ \-\-mirror
+Run in mirror mode. Simply send back received bytes to the client.
+Assumed if -s option is not used.
+.TP
+.B \-p,\ \-\-listen\-port\ \fIport\fP
+Listen on \fIport\fP to accept incoming connections.
+.TP
+.B \-r,\ \-\-run\-once
+Relay one connection and when it is finished, exit instead of
+re-entering listen mode to accept incoming connections.
+.TP
+.B \-t,\ \-\-telnet
+Assume traffic is telnet-style and output log accordingly. Without this
+option, the traffic is logged in binary form (hex code of characters is
+displayed), with this option, lines are written. It is useful to log
+traffic of telnet-style protocols like SMTP, POP3, and so on.
+By default, the traffic is expected to be raw binary (no telnet-style.)
+.TP
+.B \-b,\ \-\-buf\-size\ \fIsize\fP
+Sets the network traffic bufer size to \fIsize\fP in bytes. 10,000 by
+default.
+.TP
+.B \-\-timeout \fIduration\fP
+Sets the connection timeout to \fIduration\fP, in seconds. 5 by default.
+.TP
+.B \-l,\ \-\-log\-file\ \fIfile\fP
+Write the log in \fIfile\fP. tcprelay.log (in current working directory)
+by default.
+.TP
+.B \-n,\ \-\-nodisplay\-log
+Don't output the log on the screen. Done by default.
+.SH "INITIALIZATION FILES"
+.TP
+None.
+.SH AUTHOR
+.TP
+Written by Sébastien Millet <sebastien.millet1@club-internet.fr>.
+.TP
+Permission is granted to copy, distribute and/or modify this document under the terms of the GNU General Public License, Version 3 published by the Free Software Foundation.
