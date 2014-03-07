@@ -752,7 +752,7 @@ void almost_neverending_loop() {
 	}
 	
 	//my_logf(LL_DEBUG, LP_DATETIME, "Will forward TCP data to alternate peer, size: %li", (unsigned int)nb_bytes_received);
-	int ofs=0;
+	size_t ofs=0;
 	size_t len=(size_t)nb_bytes_received;
 	do {
           my_logf(LL_DEBUG, LP_DATETIME, "Will forward TCP data to alternate peer %d, size: %li", resend_sock, (unsigned int)len);
@@ -760,7 +760,7 @@ void almost_neverending_loop() {
             my_logf(LL_ERROR, LP_DATETIME, "send() error, %s", os_last_err_desc(s_err, sizeof(s_err)));
             closeSession(session_nr, current_fd); break;
           }
-          ofs+=nb_bytes_sent; len=-nb_bytes_sent;
+          ofs+=nb_bytes_sent; len-=nb_bytes_sent;
         } while(len > 0); // Until all received bytes have been sent
       }
     } // END for(current_fd)
