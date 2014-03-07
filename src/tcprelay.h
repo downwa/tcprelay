@@ -25,7 +25,7 @@ typedef int socklen_t;
 
 #define REGULAR_STR_STRBUFSIZE 2000
 #define ERR_STR_BUFSIZE 200
-#define DEFAULT_BUFFER_SIZE 10000
+#define DEFAULT_BUFFER_SIZE 65536
 
 #define BIND_ERROR -1
 #define LISTEN_ERROR -1
