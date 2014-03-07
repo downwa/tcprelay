@@ -700,10 +700,13 @@ void almost_neverending_loop() {
 	my_logf(LL_NORMAL, LP_DATETIME, "%s: closed connection", i_name);
 	closeSession(session_nr, current_fd);
       } else {
+/* NOTE: It is not an error to receive less than the full amount available.  It could be that your CPU was too busy
+ *       and your process blocked until a large amount of data was queued for delivery.        
 	if (nb_bytes_received == (ssize_t)bufsize && !warned_buffer_too_small) {
 	  my_logf(LL_WARNING, LP_DATETIME, "%s: recv() buffer size hit (size=%i)", i_name, bufsize);
 	  warned_buffer_too_small = TRUE;
 	}
+*/	
 	if (telnet_log) {
 	  int it = (current_fd == g_session_socks[session_nr] ? 0 : 1);
 	  char c;
@@ -751,24 +754,14 @@ void almost_neverending_loop() {
 	//my_logf(LL_DEBUG, LP_DATETIME, "Will forward TCP data to alternate peer, size: %li", (unsigned int)nb_bytes_received);
 	int ofs=0;
 	size_t len=(size_t)nb_bytes_received;
-	dosend:
-	my_logf(LL_DEBUG, LP_DATETIME, "Will forward TCP data to alternate peer %d, size: %li", resend_sock, (unsigned int)len);
-	if ((nb_bytes_sent = send(resend_sock, &buffer[session_nr][ofs], len, 0)) == SEND_ERROR) {
-	  my_logf(LL_ERROR, LP_DATETIME, "send() error, %s", os_last_err_desc(s_err, sizeof(s_err)));
-	  closeSession(session_nr, current_fd);
-	} else if (nb_bytes_sent == 0) {
-	  my_logs(LL_ERROR, LP_DATETIME, "send() error, no byte sent");
-	} else if (nb_bytes_sent != nb_bytes_received) {
-	  // FIXME
-	  // Maybe the TCP layer is requesting the code to do other send(),
-	  // to reach, after as many send() as necessary, the total number
-	  // of bytes received? Any way.
-	  my_logf(LL_ERROR, LP_DATETIME, "Could not send as many bytes as received (received=%lu, sent=%lu",
-		  (long unsigned int)nb_bytes_received, (long unsigned int)nb_bytes_sent);
-	  // NOTE: Above fixme is correct and below change should fix it but needs to be tested
-	  ofs+=nb_bytes_sent; len=-nb_bytes_sent;
-	  goto dosend;
-	}
+	do {
+          my_logf(LL_DEBUG, LP_DATETIME, "Will forward TCP data to alternate peer %d, size: %li", resend_sock, (unsigned int)len);
+          if ((nb_bytes_sent = send(resend_sock, &buffer[session_nr][ofs], len, 0)) == SEND_ERROR) {
+            my_logf(LL_ERROR, LP_DATETIME, "send() error, %s", os_last_err_desc(s_err, sizeof(s_err)));
+            closeSession(session_nr, current_fd); break;
+          }
+          ofs+=nb_bytes_sent; len=-nb_bytes_sent;
+        } while(len > 0); // Until all received bytes have been sent
       }
     } // END for(current_fd)
     
