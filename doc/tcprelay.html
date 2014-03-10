@@ -4,7 +4,7 @@ Content-type: text/html
 <HTML><HEAD><TITLE>Man page of tcprelay</TITLE>
 </HEAD><BODY>
 <H1>tcprelay</H1>
-Section: User Commands  (1)<BR>Updated: version 1.2<BR><A HREF="#index">Index</A>
+Section: User Commands  (1)<BR>Updated: version 1.3<BR><A HREF="#index">Index</A>
 <A HREF="/cgi-bin/man/man2html">Return to Main Contents</A><HR>
 
 <P>
@@ -28,7 +28,7 @@ Section: User Commands  (1)<BR>Updated: version 1.2<BR><A HREF="#index">Index</A
 <DL COMPACT>
 <DT>tcprelay relays TCP traffic between a server and a client, logging all<DD>
 exchanged data in between.
-<P>
+<DT>Can manage multiple sessions in parallel since version 1.3.<DD>
 </DL>
 <A NAME="lbAE">&nbsp;</A>
 <H2>OPTIONS</H2>
@@ -46,6 +46,10 @@ Display version information and exit.
 
 <DD>
 Be more talkative.
+<DT><B>--minimal-log</B>
+
+<DD>
+Don't log data, only connection info.
 <DT><B>-q,&nbsp;--quiet</B>
 
 <DD>
@@ -87,6 +91,12 @@ default.
 
 <DD>
 Sets the connection timeout to <I>duration</I>, in seconds. 5 by default.
+<DT><B>--ip-as-port</B>
+
+<DD>
+Use last byte of IP to form source port when connecting to server: try up to
+252 times using this formula (where ipa is the last IP byte): p = 1024 + (256
+* n) + ipa.
 <DT><B>-l,&nbsp;--log-file&nbsp;</B><I>file</I>
 
 <DD>
@@ -108,6 +118,7 @@ Don't output the log on the screen. Done by default.
 
 <DL COMPACT>
 <DT>Written by Sébastien Millet &lt;<A HREF="mailto:sebastien.millet1@club-internet.fr">sebastien.millet1@club-internet.fr</A>&gt;.<DD>
+<DT>Multisession and some other features by Warren Downs &lt;<A HREF="mailto:Warren@choggiung.com">Warren@choggiung.com</A>&gt;.<DD>
 <DT>Permission is granted to copy, distribute and/or modify this document under the terms of the GNU General Public License, Version 3 published by the Free Software Foundation.<DD>
 <P>
 </DL>
@@ -126,6 +137,6 @@ Don't output the log on the screen. Done by default.
 This document was created by
 <A HREF="/cgi-bin/man/man2html">man2html</A>,
 using the manual pages.<BR>
-Time: 23:24:23 GMT, November 30, 2012
+Time: 16:08:50 GMT, March 08, 2014
 </BODY>
 </HTML>

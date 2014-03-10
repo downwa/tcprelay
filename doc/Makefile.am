@@ -1,6 +1,18 @@
 # doc/Makefile.am
 
-dist_doc_DATA=${srcdir}/tcprelay.html
+MANPAGEEN=${srcdir}/tcprelay.1
+HTMLPAGEEN=${srcdir}/tcprelay.html
 
-dist_man_MANS=${srcdir}/tcprelay.1
+dist_doc_DATA=${HTMLPAGEEN}
+
+EXTRA_DIST=${HTMLPAGEEN}
+
+dist_man_MANS=${MANPAGEEN}
+
+if BUILD_DOCS
+
+${HTMLPAGEEN}: ${MANPAGEEN}
+	man2html ${MANPAGEEN} > $@
+
+endif
 

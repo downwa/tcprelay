@@ -1,6 +1,6 @@
 // tcprelay.h
 
-// Copyright Sébastien Millet, 2012
+// Copyright Sébastien Millet, 2012, 2013, 2014
 
 #ifdef HAVE_CONFIG_H
 #include "../config.h"
@@ -16,6 +16,10 @@
 
 #if defined(_WIN32) || defined(_WIN64)
 typedef int socklen_t;
+#define SHUT_RD   SD_RECEIVE 
+#define SHUT_WR   SD_SEND 
+#define SHUT_RDWR SD_BOTH 
+#define EADDRINUSE  98
 #endif
 
 #define FALSE 0
@@ -37,7 +41,6 @@ typedef int socklen_t;
 #define SETSOCKOPT_ERROR -1
 #define GETTIMEOFDAY_ERROR -1
 
-#define max(a,b) (((a)>(b))?(a):(b))
 #define MAXSESSIONS 100
 
   // Level of log
@@ -50,6 +53,7 @@ struct telnet_t {
   char *write;
   int nb_chars;
   int last_cr;
+  int telnet_ok;
 };
 
 void os_set_sock_nonblocking_mode(int sock);
@@ -61,4 +65,6 @@ int os_last_network_op_is_in_progress();
 void os_closesocket(int sock);
 
 void fatal_error(const char *format, ...);
+
+void bindPort(int session_nr);
 

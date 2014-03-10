@@ -1,11 +1,11 @@
 #                                               -*- Autoconf -*-
 # Process this file with autoconf to produce a configure script.
 
-# Sébastien Millet, December 2012
+# Sébastien Millet, December 2012, March 2014
 
 AC_PREREQ([2.68])
 
-AC_INIT([tcprelay], [1.2], [sebastien.millet1@club-internet.fr])
+AC_INIT([tcprelay], [1.3], [sebastien.millet1@club-internet.fr])
 
 AC_CONFIG_SRCDIR([src/tcprelay.h])
 AC_CONFIG_AUX_DIR([admin])
@@ -15,6 +15,8 @@ AC_CANONICAL_HOST
 
 AM_INIT_AUTOMAKE
 
+AM_MAINTAINER_MODE
+
 AC_CONFIG_HEADERS([config.h])
 
 dnl ==================== Options ====================================
@@ -22,6 +24,14 @@ dnl ==================== Options ====================================
 AC_ARG_ENABLE(debug,
               [  --enable-debug          enable debugging information],
               enable_debug="$enableval", enable_debug="no")
+
+if test "x$USE_MAINTAINER_MODE" = "xyes"; then
+	build_docs=yes
+else
+	build_docs=no
+fi
+
+AM_CONDITIONAL(BUILD_DOCS, test $build_docs = yes)
 
 if test "${enable_debug}" = yes ; then
   CFLAGS="$CFLAGS -DDEBUG"

@@ -1,7 +1,6 @@
 // tcprelay.c
 
-// Copyright Sébastien Millet, 2012, 2013, 2014
-// Portions of multiple-client support Copyright Warren Downs, 2014
+// Copyright Sébastien Millet, 2012
 
 #include "tcprelay.h"
 
@@ -55,9 +54,7 @@ int display_log = TRUE;
 int run_once = FALSE;
 int g_mirror_mode = FALSE;
 int minimal_log = FALSE; // Turn off data logging
-  // Last byte of IP address used to form source port: Try up to 252 times
-  // using this formula (where ipa is the last IP byte): p=1024+(256*n)+ipa
-int ip_as_port = FALSE;
+int ip_as_port = FALSE; // Last byte of IP address used to form source port: Try up to 252 times using this formula (where ipa is the last IP byte): p=1024+(256*n)+ipa
 
 FILE *log_fd;
 
@@ -69,7 +66,6 @@ int g_connection_socks[MAXSESSIONS];
 int g_session_socks[MAXSESSIONS];
 struct telnet_t telnet[MAXSESSIONS][2];
 char* buffer[MAXSESSIONS];
-int buffer_telnet_ok[MAXSESSIONS];
 int connection_cli_is_live[MAXSESSIONS],connection_srv_is_live[MAXSESSIONS];
 size_t telnet_str_bufsize;
 int bport[MAXSESSIONS];
@@ -85,7 +81,6 @@ int bport[MAXSESSIONS];
  * Nonetheless, we must still always null-terminate (truncate) our destination buffer if source is not
  * guaranteed to be null-terminated, since it is not guaranteed by any of the str*cpy/cat functions.
 */
-
 /************************************************************************************************************/
 /* OS SOCKETS                                                                                               */
 /************************************************************************************************************/
@@ -375,7 +370,7 @@ void get_hex_line(const char *data, const unsigned int offset, const unsigned in
 //
 // Display the buffer in the log
 //
-void my_log_buffer(const char *buf, const unsigned int nb_bytes, int *telnet_ok) {
+void my_log_buffer(const char *buffer, const unsigned int nb_bytes, int *telnet_ok) {
   if(minimal_log) { return; }
   char s[hexline_strbufsize];
   unsigned int nb_on_line;
@@ -386,7 +381,7 @@ void my_log_buffer(const char *buf, const unsigned int nb_bytes, int *telnet_ok)
     if (nb_on_line > 16) {
       nb_on_line = 16;
     }
-    get_hex_line(buf, offset, nb_on_line, s, hexline_strbufsize, telnet_ok);
+    get_hex_line(buffer, offset, nb_on_line, s, hexline_strbufsize, telnet_ok);
     my_logs(LL_NORMAL, LP_2SPACE, s);
   }
 }
@@ -394,7 +389,16 @@ void my_log_buffer(const char *buf, const unsigned int nb_bytes, int *telnet_ok)
 /************************************************************************************************************/
 /* SESSION UTILITIES                                                                                        */
 /************************************************************************************************************/
-int closeSession(int session_nr, int current_fd, const char *i_name) {
+void shutdownFd(int current_fd) {
+  int xa;
+  for(xa=0; xa<MAXSESSIONS; xa++) {
+    if(connection_cli_is_live[xa] || connection_srv_is_live[xa]) {
+      if(closeSession(xa, current_fd)) { break; }
+    }
+  }
+}
+
+int closeSession(int session_nr, int current_fd) {
   int doBreak=FALSE;
   if (current_fd == g_connection_socks[session_nr]) {
     shutdown(g_connection_socks[session_nr],SHUT_RD); connection_cli_is_live[session_nr]=FALSE; doBreak=TRUE;
@@ -408,16 +412,13 @@ int closeSession(int session_nr, int current_fd, const char *i_name) {
     if(g_session_socks[session_nr] != -1)    { os_closesocket(g_session_socks[session_nr]);    g_session_socks[session_nr]=-1;    }
     // Free allocated memory
     free(buffer[session_nr]); buffer[session_nr]=NULL;
-    if (!telnet_log && buffer_telnet_ok[session_nr] && !minimal_log) {
-      my_logf(LL_WARNING, LP_DATETIME, "%s: all characters exchanged were printable, consider using option --telnet", i_name);
-    }
     int it;
     for (it = 0; it < 2; it++) { free(telnet[session_nr][it].base); telnet[session_nr][it].base=NULL; }
   }
   return doBreak;
 }  
 
-// Find an available session (one that has both sockets closed)
+// Find an available session (one that has both sockets closed
 int alloc_session() {
   int xa;
   for(xa=0; xa<MAXSESSIONS; xa++) {
@@ -426,24 +427,19 @@ int alloc_session() {
   return -1;
 }
 
+  // String to store error descriptions
+char s_err[ERR_STR_BUFSIZE];
   // String to print the description of the target server, like "servername:port"
 char server_desc[200];
   // Resolving server name
 struct sockaddr_in server;
 struct hostent *hostinfo = NULL;
 
-int connect_with_timeout(const struct sockaddr_in *srv, int *connection_sock, struct timeval *tv, const char *desc, int session_nr);
-
 int newSession() {
   struct sockaddr_in client;
   unsigned int client_size = sizeof(client);
   int session_nr=alloc_session();
-
-    // String to store error descriptions
-  char s_err[ERR_STR_BUFSIZE];
-
-// 1. Accept an incoming connection
-
+  // 1. Accept an incoming connection
   my_logf(LL_DEBUG, LP_DATETIME, "Session %d accepting on port %i...", session_nr, listen_port);
   if ((g_session_socks[session_nr] = accept(g_listen_sock, (struct sockaddr *) &client, &client_size)) == ACCEPT_ERROR) {
     if (flag_interrupted) { return -1; } // Cancel new session
@@ -456,9 +452,7 @@ int newSession() {
     bport[session_nr]=0;
     if(pp) { bport[session_nr]=atoi(&pp[1]); }
   }
-
-// 2. Connect to remote server
-
+  // 2. Connect to remote server
   if (g_mirror_mode) {
     g_connection_socks[session_nr] = -1;
   } else {
@@ -469,9 +463,9 @@ int newSession() {
     server.sin_port = htons((uint16_t)server_port);
     server.sin_addr = *(struct in_addr *)hostinfo->h_addr;
     my_logf(LL_VERBOSE, LP_DATETIME, "Connecting to %s...", server_desc);
-      // tv value is undefined after call to connect() as per documentation, so
-      // it is to be re-set every time.
-    struct timeval tv; // time value
+    // tv value is undefined after call to connect() as per documentation, so
+    // it is to be re-set every time.
+    struct timeval tv; // time value    
     tv.tv_sec = connect_timeout;
     tv.tv_usec = 0;
     if (connect_with_timeout(&server, &g_connection_socks[session_nr], &tv, server_desc, session_nr) != 0) {
@@ -480,19 +474,17 @@ int newSession() {
     }
     my_logf(LL_NORMAL, LP_DATETIME, "Connected to %s: session_nr=%d", server_desc, session_nr/*_connection_socks[session_nr]*/);
   }
-    // Prepare resources to manage relaying: buffer to exchange data through the network
-    // (buffer), and strings to log trafic in telnet-style.
+  // Prepare resources to manage relaying: buffer to exchange data through the network
+  // (buffer), and strings to log trafic in telnet-style.
   buffer[session_nr] = (char *)malloc(bufsize);
-  buffer_telnet_ok[session_nr] = TRUE;
   int it;
   for (it = 0; it < 2; it++) {
     telnet[session_nr][it].base = (char *)malloc(telnet_str_bufsize);
     telnet[session_nr][it].write = telnet[session_nr][it].base;
     telnet[session_nr][it].nb_chars = 0;
     telnet[session_nr][it].last_cr = FALSE;
-    telnet[session_nr][it].telnet_ok = TRUE;
   }
-
+  
   return session_nr;
 }
 
@@ -501,29 +493,24 @@ int newSession() {
  * byte of the 4 byte IP address (the other three bytes must be assumed to be on the same "class C" network)
  */
 void bindPort(int session_nr) {
-
-    // String to store error descriptions
-  char s_err[ERR_STR_BUFSIZE];
-
   int sport=-1;
-    // Optionally try to use last byte of client IP address as source port when connecting to server
-    // Try up to 252 times using this formula (where ipa is the last IP byte): p=1024+(256*n)+ipa
-    // This can be useful for server to know which client connected to it
+  // Optionally try to use last byte of client IP address as source port when connecting to server
+  // Try up to 252 times using this formula (where ipa is the last IP byte): p=1024+(256*n)+ipa
+  // This can be useful for server to know which client connected to it
   if(ip_as_port) {
     int myport=bport[session_nr]+1024;
-
-/*    int on = 1;*/
+    
+    int on = 1;
     for(sport=myport; sport<65535; sport+=256) {
       struct sockaddr_in sname;
       sname.sin_family = AF_INET;
       sname.sin_addr.s_addr = htonl(INADDR_ANY);
       sname.sin_port = htons((uint16_t)sport);
       if (bind(g_connection_socks[session_nr], (struct sockaddr *)&sname, sizeof(sname)) == SOCKET_ERROR) {
-        if(errno == EADDRINUSE) {
-          my_logf(LL_DEBUG, LP_DATETIME, "bind() trying again, %s", os_last_err_desc(s_err, sizeof(s_err)));
-          continue;
-        }
-        my_logf(LL_ERROR, LP_DATETIME, "bind() error on connection socket, %s", os_last_err_desc(s_err, sizeof(s_err)));
+	if(errno == EADDRINUSE) { 
+	  my_logf(LL_DEBUG, LP_DATETIME, "bind() trying again, %s", os_last_err_desc(s_err, sizeof(s_err)));	  
+	  continue; }
+	  my_logf(LL_ERROR, LP_DATETIME, "bind() error on connection socket, %s", os_last_err_desc(s_err, sizeof(s_err)));
       }
       break;
     }
@@ -535,20 +522,17 @@ void bindPort(int session_nr) {
 // Connect to a remote host, with a timeout
 // Return 0 if success, a non-zero value if failure
 //
-int connect_with_timeout(const struct sockaddr_in *srv, int *connection_sock, struct timeval *tv, const char *desc, int session_nr) {
+int connect_with_timeout(const struct sockaddr_in *server, int *connection_sock, struct timeval *tv, const char *desc, int session_nr) {
   fd_set fdset;
   FD_ZERO(&fdset);
   FD_SET(*connection_sock, &fdset);
-
-    // String to store error descriptions
-  char s_err[ERR_STR_BUFSIZE];
 
   os_set_sock_nonblocking_mode(*connection_sock);
 
   bindPort(session_nr);
 
   int res = 0;
-  if (connect(*connection_sock, (struct sockaddr *)srv, sizeof(*srv)) == CONNECT_ERROR) {
+  if (connect(*connection_sock, (struct sockaddr *)server, sizeof(*server)) == CONNECT_ERROR) {
     if (os_last_network_op_is_in_progress()) {
       if (select((*connection_sock) + 1, NULL, &fdset, NULL, tv) <= 0) {
         my_logf(LL_ERROR, LP_DATETIME, "Timeout connecting to %s, %s", desc, os_last_err_desc(s_err, sizeof(s_err)));
@@ -574,8 +558,6 @@ int connect_with_timeout(const struct sockaddr_in *srv, int *connection_sock, st
 
   return res;
 }
-
-
 /************************************************************************************************************/
 /* MAIN LOOP                                                                                                */
 /************************************************************************************************************/
@@ -586,9 +568,6 @@ int connect_with_timeout(const struct sockaddr_in *srv, int *connection_sock, st
 // Main loop
 //
 void almost_neverending_loop() {
-    // String to store error descriptions
-  char s_err[ERR_STR_BUFSIZE];
-
   if (g_mirror_mode) {
     my_logf(LL_VERBOSE, LP_DATETIME, "Mode: mirror");
     my_logf(LL_VERBOSE, LP_DATETIME, "Server: n/a");
@@ -602,8 +581,6 @@ void almost_neverending_loop() {
   my_logf(LL_VERBOSE, LP_DATETIME, "log file: %s", logfile);
   my_logf(LL_VERBOSE, LP_DATETIME, "Display log: %s", display_log ? "yes" : "no");
   my_logf(LL_VERBOSE, LP_DATETIME, "Telnet log: %s", telnet_log ? "yes" : "no");
-  my_logf(LL_VERBOSE, LP_DATETIME, "Minimal log: %s", minimal_log ? "yes" : "no");
-  my_logf(LL_VERBOSE, LP_DATETIME, "Ip as port: %s", ip_as_port ? "yes" : "no");
   my_logf(LL_VERBOSE, LP_DATETIME, "Buffer size: %u", bufsize);
   my_logf(LL_VERBOSE, LP_DATETIME, "Connection timeout: %i", connect_timeout);
   my_logf(LL_VERBOSE, LP_DATETIME, "Run once: %s", run_once ? "yes" : "no");
@@ -642,6 +619,7 @@ void almost_neverending_loop() {
     fatal_error("listen() error, %s", os_last_err_desc(s_err, sizeof(s_err)));
   }
 
+
   int fdmax;
   int current_fd;
 
@@ -655,22 +633,24 @@ void almost_neverending_loop() {
   ssize_t nb_bytes_sent;
   int resend_sock;
   int warned_buffer_too_small;
+  int telnet_ok;
 
   do {
+    telnet_ok = TRUE;
     telnet_max_line_size_hit = FALSE;
     warned_buffer_too_small = FALSE;
-
-      /** Add all sockets to fdset (including listen socket, to be notified of new connections) **/
+    
+    /** Add all sockets to fdset (including listen socket, to be notified of new connections) **/
     FD_ZERO(&fdset);
     FD_SET(g_listen_sock, &fdset);
     int fdmax=g_listen_sock;
     int xa;
     for(xa=0; xa<MAXSESSIONS; xa++) { // Add all active sockets
-      if(g_connection_socks[xa] > -1) {
-        FD_SET(g_connection_socks[xa], &fdset); my_logf(LL_DEBUG, LP_DATETIME, "Watching conn fd %d",g_connection_socks[xa]);
+      if(g_connection_socks[xa] > -1)    {
+	FD_SET(g_connection_socks[xa], &fdset); my_logf(LL_DEBUG, LP_DATETIME, "Watching conn fd %d",g_connection_socks[xa]);
       }
-      if(g_session_socks[xa] > -1) {
-        FD_SET(g_session_socks[xa], &fdset); my_logf(LL_DEBUG, LP_DATETIME, "Watching sess fd %d",g_session_socks[xa]);
+      if(g_session_socks[xa] > -1)       {
+	FD_SET(g_session_socks[xa], &fdset); my_logf(LL_DEBUG, LP_DATETIME, "Watching sess fd %d",g_session_socks[xa]);
       }
       if(g_connection_socks[xa] > fdmax) { fdmax=g_connection_socks[xa]; }
       if(g_session_socks[xa] > fdmax)    { fdmax=g_session_socks[xa];    }
@@ -683,15 +663,16 @@ void almost_neverending_loop() {
     my_logf(LL_DEBUG, LP_DATETIME, "select:activity on %d fds...",ret);
     
     int session_nr=-1; // Which session is demanding attention
-    
     // 3. Loop through both connections of all sessions to forward received data back and forth
-    
     for (current_fd = 0; current_fd <= fdmax && !flag_interrupted; current_fd++) {
       if (!FD_ISSET(current_fd, &fdset)) { continue; }
       my_logf(LL_DEBUG, LP_DATETIME, "current_fd=%d",current_fd);
       if(current_fd == g_listen_sock) {
 	session_nr=newSession();
-	if(session_nr == -1 && flag_interrupted) { break; } // Cancel new session
+	if(session_nr == -1) {
+	  if (flag_interrupted) { break; } // Cancel new session
+	  continue;
+	}
 	continue;
       }
       else { // Find session_nr for active fd
@@ -714,10 +695,10 @@ void almost_neverending_loop() {
       }
       if ((nb_bytes_received = recv(current_fd, buffer[session_nr], bufsize, 0)) == RECV_ERROR) {
 	my_logf(LL_ERROR, LP_DATETIME, "%s: recv() error, %s", i_name, os_last_err_desc(s_err, sizeof(s_err)));
-        closeSession(session_nr, current_fd, i_name);
+	closeSession(session_nr, current_fd);
       } else if (nb_bytes_received == 0) {
 	my_logf(LL_NORMAL, LP_DATETIME, "%s: closed connection", i_name);
-        closeSession(session_nr, current_fd, i_name);
+	closeSession(session_nr, current_fd);
       } else {
 /* NOTE: It is not an error to receive less than the full amount available.  It could be that your CPU was too busy
  *       and your process blocked until a large amount of data was queued for delivery.        
@@ -745,7 +726,7 @@ void almost_neverending_loop() {
 		telnet[session_nr][it].nb_chars = 0;
 		if (!telnet_max_line_size_hit) {
 		  my_logf(LL_WARNING, LP_DATETIME,
-                    "%s: telnet max line size hit, consider increasing it by increasing the buffer size", i_name);
+			  "%s: telnet max line size hit, consider increasing it by increasing the buffer size", i_name);
 		  telnet_max_line_size_hit = TRUE;
 		}
 	      }
@@ -754,15 +735,15 @@ void almost_neverending_loop() {
 	      telnet[session_nr][it].nb_chars++;
 	    }
 	    telnet[session_nr][it].last_cr = (c == '\r');
-            if (telnet[session_nr][it].telnet_ok && c < 32 && (c != '\r' && c != '\n' && !isspace(c))) {
-              my_logs(LL_WARNING, LP_DATETIME, "Unprintable character encountered although --telnet option in use");
-              telnet[session_nr][it].telnet_ok = FALSE;
-            }
+	    if (telnet_ok && c < 32 && (c != '\r' && c != '\n' && !isspace(c))) {
+	      my_logs(LL_WARNING, LP_DATETIME, "Unprintable character encountered although --telnet option in use");
+	      telnet_ok = FALSE;
+	    }
 	  }
 	} else {
 	  snprintf(mystring, sizeof(mystring), "%s sent %li bytes (0x%04X)", i_name, nb_bytes_received, (unsigned int)nb_bytes_received);
 	  my_logs(LL_NORMAL, LP_DATETIME, mystring);
-	  my_log_buffer(buffer[session_nr], (unsigned int)nb_bytes_received, &buffer_telnet_ok[session_nr]);
+	  my_log_buffer(buffer[session_nr], (unsigned int)nb_bytes_received, &telnet_ok);
 	}
 	if (g_mirror_mode) {
 	  resend_sock = g_session_socks[session_nr];
@@ -777,18 +758,21 @@ void almost_neverending_loop() {
           my_logf(LL_DEBUG, LP_DATETIME, "Will forward TCP data to alternate peer %d, size: %li", resend_sock, (unsigned int)len);
           if ((nb_bytes_sent = send(resend_sock, &buffer[session_nr][ofs], len, 0)) == SEND_ERROR) {
             my_logf(LL_ERROR, LP_DATETIME, "send() error, %s", os_last_err_desc(s_err, sizeof(s_err)));
-            closeSession(session_nr, current_fd, i_name); break;
+            closeSession(session_nr, current_fd); break;
           }
           ofs+=nb_bytes_sent; len-=nb_bytes_sent;
         } while(len > 0); // Until all received bytes have been sent
       }
     } // END for(current_fd)
     
+    if (!telnet_log && telnet_ok && !minimal_log) {
+      my_logs(LL_WARNING, LP_DATETIME, "All characters received were printable, consider using option --telnet");
+    }
     int it;
     for (it = 0; it < 2; it++) {
       if (telnet[session_nr][it].nb_chars >= 1) {
 	my_logf(LL_WARNING, LP_DATETIME,
-          "%s: pending characters not terminated by internet new line", (it == 0 ? CLI_SHORTNAME : SRV_SHORTNAME));
+		"%s: pending characters not terminated by internet new line", (it == 0 ? CLI_SHORTNAME : SRV_SHORTNAME));
 	*(telnet[session_nr][it].write) = '\0';
 	my_log_telnet(it == 1, telnet[session_nr][it].base);
       }
@@ -858,7 +842,7 @@ void option_error(const char *s) {
 //
 void printhelp() {
   printf("Usage: " PACKAGE_NAME " -s server[:port] -p port [options...]\n\n");
-  printf("Accept incoming connections and redirect them to the specified server.\n\n");
+  printf("Accept an incoming connection and redirect it to the specified server.\n\n");
   printf("  -h  --help          Display this help text\n");
   printf("  -v  --version       Display version information and exit\n");
   printf("  -V  --verbose       Be more talkative\n");
@@ -874,8 +858,7 @@ void printhelp() {
   printf("  -b  --bufsize       Size of buffer in bytes for network data (default: %u)\n", DEFAULT_BUFFER_SIZE);
   printf("      --timeout       Timeout in seconds to connect to server (default: %i)\n", DEFAULT_CONNECT_TIMEOUT);
   printf("      --ip-as-port    Use last byte of IP to form source port when connecting to server:\n");
-  printf("                      Try up to 252 times using this formula (where ipa is the last\n");
-  printf("                      IP byte): p = 1024 + (256 * n) + ipa\n");
+  printf("                      Try up to 252 times using this formula (where ipa is the last IP byte): p=1024+(256*n)+ipa\n");
   printf("  -l  --log-file      Log file (default: %s)\n", DEFAULT_LOGFILE);
   printf("  -n  --nodisplay-log Don't print the log on the screen\n");
 }
@@ -885,10 +868,10 @@ void printhelp() {
 //
 void printversion() {
   printf(PACKAGE_STRING "\n");
-  printf("Copyright 2012, 2013, 2014 Sébastien Millet\n");
-  printf("This program is free software; you may redistribute it under the terms of\n");
-  printf("the GNU General Public License version 3 or (at your option) any later version.\n");
-  printf("This program has absolutely no warranty.\n");
+  printf("Copyright 2012 Sébastien Millet\n");
+	printf("This program is free software; you may redistribute it under the terms of\n");
+	printf("the GNU General Public License version 3 or (at your option) any later version.\n");
+	printf("This program has absolutely no warranty.\n");
 }
 
 //
@@ -907,8 +890,8 @@ void parse_options(int argc, char *argv[]) {
     {"version", no_argument, NULL, 'v'},
     {"verbose", no_argument, NULL, 'V'},
     {"quiet", no_argument, NULL, 'q'},
-    {"minimal-log", no_argument, NULL, 2},
-    {"ip-as-port", no_argument, NULL, 3},
+    {"minimal-log", no_argument, NULL, 2}, 
+    {"ip-as-port", no_argument, NULL, 3},    
     {"server", required_argument, NULL, 's'},
     {"mirror", no_argument, NULL, 'm'},
     {"listen-port", required_argument, NULL, 'p'},
@@ -943,15 +926,15 @@ void parse_options(int argc, char *argv[]) {
     }
 
     switch (c) {
-
+      
       case 'h':
         printhelp();
         exit(EXIT_FAILURE);
-
+      
       case 'v':
         printversion();
         exit(EXIT_FAILURE);
-
+      
       case 's':
         pos = strrchr(optarg, ':');
         if (pos == NULL) {
@@ -967,7 +950,7 @@ void parse_options(int argc, char *argv[]) {
         }
         server_name_set = TRUE;
         break;
-
+      
       case 'm':
         g_mirror_mode = TRUE;
         break;
@@ -999,7 +982,7 @@ void parse_options(int argc, char *argv[]) {
       case 3:
         ip_as_port = TRUE;
         break;
-
+      
       case 'l':
         strlcpy(logfile, optarg, sizeof(logfile)); // NOTE: BSD strlcpy safer than strncpy
         break;
@@ -1062,9 +1045,9 @@ int main(int argc, char *argv[]) {
   my_log_open();
   my_logs(LL_NORMAL, LP_DATETIME, PACKAGE_STRING " start");
 
-    // Just to call WSAStartup...
+    // Just to call WSAStartup, yes!
   os_init_network();
-
+  
   memset(g_connection_socks,-1,sizeof(g_connection_socks));
   memset(g_session_socks,-1,sizeof(g_session_socks));
 
@@ -1080,4 +1063,3 @@ int main(int argc, char *argv[]) {
 
   return EXIT_SUCCESS;
 }
-
