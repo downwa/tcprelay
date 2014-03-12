@@ -516,7 +516,6 @@ void bindPort(int session_nr) {
 	if(ip_as_port) {
 		int myport=bport[session_nr]+1024;
 
-/*    int on = 1;*/
 		for(sport=myport; sport<65535; sport+=256) {
 			struct sockaddr_in sname;
 			sname.sin_family = AF_INET;
@@ -694,90 +693,90 @@ void almost_neverending_loop() {
 			if (!FD_ISSET(current_fd, &fdset)) { continue; }
 			my_logf(LL_DEBUG, LP_DATETIME, "current_fd=%d",current_fd);
 			if(current_fd == g_listen_sock) {
-	session_nr=newSession();
-	if(session_nr == -1 && flag_interrupted) { break; } // Cancel new session
-	continue;
+				session_nr=newSession();
+				if(session_nr == -1 && flag_interrupted) { break; } // Cancel new session
+				continue;
 			}
 			else { // Find session_nr for active fd
-	session_nr=-1;
-	for(xa=0; xa<MAXSESSIONS; xa++) { // Which session has this fd?
-		if(g_connection_socks[xa] == current_fd || g_session_socks[xa] == current_fd) { session_nr=xa; break; }
-	}
-	if(session_nr == -1) {
-		//fatal_error("Internal error never_ending_loop()-00, file %s, line %lu: activity on unexpected fd=%d (listen=%d)",  __FILE__, __LINE__,current_fd,g_listen_sock);
+				session_nr=-1;
+				for(xa=0; xa<MAXSESSIONS; xa++) { // Which session has this fd?
+					if(g_connection_socks[xa] == current_fd || g_session_socks[xa] == current_fd) { session_nr=xa; break; }
+				}
+				if(session_nr == -1) {
+					//fatal_error("Internal error never_ending_loop()-00, file %s, line %lu: activity on unexpected fd=%d (listen=%d)",  __FILE__, __LINE__,current_fd,g_listen_sock);
 					continue; // FIXME: For now, simply ignore unexpected activity
-	}
+				}
 			}
 			if (!g_mirror_mode && current_fd == g_connection_socks[session_nr]) {
-	snprintf(i_name,sizeof(i_name),"%s[%d]",SRV_SHORTNAME,session_nr);
+				snprintf(i_name,sizeof(i_name),"%s[%d]",SRV_SHORTNAME,session_nr);
 			} else if (current_fd == g_session_socks[session_nr]) {
-	snprintf(i_name,sizeof(i_name),"%s[%d]",CLI_SHORTNAME,session_nr);
+				snprintf(i_name,sizeof(i_name),"%s[%d]",CLI_SHORTNAME,session_nr);
 			} else {
-	fatal_error("Internal error never_ending_loop()-01, file %s, line %lu: activity on unexpected fd=%d (listen=%d)",  __FILE__, __LINE__,current_fd,g_listen_sock);
-	//internal_error("never_ending_loop()-01: activity on unexpected fd=%d (listen=%d)", __FILE__, __LINE__,current_fd,g_listen_sock);
+				fatal_error("Internal error never_ending_loop()-01, file %s, line %lu: activity on unexpected fd=%d (listen=%d)",  __FILE__, __LINE__,current_fd,g_listen_sock);
+				//internal_error("never_ending_loop()-01: activity on unexpected fd=%d (listen=%d)", __FILE__, __LINE__,current_fd,g_listen_sock);
 			}
 			if ((nb_bytes_received = recv(current_fd, buffer[session_nr], bufsize, 0)) == RECV_ERROR) {
-	my_logf(LL_ERROR, LP_DATETIME, "%s: recv() error, %s", i_name, os_last_err_desc(s_err, sizeof(s_err)));
+				my_logf(LL_ERROR, LP_DATETIME, "%s: recv() error, %s", i_name, os_last_err_desc(s_err, sizeof(s_err)));
 				closeSession(session_nr, current_fd, i_name);
 			} else if (nb_bytes_received == 0) {
-	my_logf(LL_NORMAL, LP_DATETIME, "%s: closed connection", i_name);
+				my_logf(LL_NORMAL, LP_DATETIME, "%s: closed connection", i_name);
 				closeSession(session_nr, current_fd, i_name);
 			} else {
-/* NOTE: It is not an error to receive less than the full amount available.  It could be that your CPU was too busy
- *       and your process blocked until a large amount of data was queued for delivery.
-	if (nb_bytes_received == (ssize_t)bufsize && !warned_buffer_too_small) {
-		my_logf(LL_WARNING, LP_DATETIME, "%s: recv() buffer size hit (size=%i)", i_name, bufsize);
-		warned_buffer_too_small = TRUE;
-	}
-*/
-	if (telnet_log) {
-		int it = (current_fd == g_session_socks[session_nr] ? 0 : 1);
-		char c;
-		int bufwalker;
-		for (bufwalker = 0; bufwalker < nb_bytes_received; bufwalker++) {
-			c = buffer[session_nr][bufwalker];
-			if (c == '\n' && telnet[session_nr][it].last_cr) {
-				*(telnet[session_nr][it].write - 1) = '\0';
+			/* NOTE: It is not an error to receive less than the full amount available.  It could be that your CPU was too busy
+			*       and your process blocked until a large amount of data was queued for delivery.
+				if (nb_bytes_received == (ssize_t)bufsize && !warned_buffer_too_small) {
+					my_logf(LL_WARNING, LP_DATETIME, "%s: recv() buffer size hit (size=%i)", i_name, bufsize);
+					warned_buffer_too_small = TRUE;
+				}
+			*/
+			if (telnet_log) {
+				int it = (current_fd == g_session_socks[session_nr] ? 0 : 1);
+				char c;
+				int bufwalker;
+				for (bufwalker = 0; bufwalker < nb_bytes_received; bufwalker++) {
+					c = buffer[session_nr][bufwalker];
+					if (c == '\n' && telnet[session_nr][it].last_cr) {
+						*(telnet[session_nr][it].write - 1) = '\0';
+						my_log_telnet(!g_mirror_mode && current_fd == g_connection_socks[session_nr], telnet[session_nr][it].base);
+						telnet[session_nr][it].write = telnet[session_nr][it].base;
+						telnet[session_nr][it].nb_chars = 0;
+					} else {
+						if ((size_t)telnet[session_nr][it].nb_chars >= telnet_str_bufsize - 1) {
+				*(telnet[session_nr][it].write) = '\0';
 				my_log_telnet(!g_mirror_mode && current_fd == g_connection_socks[session_nr], telnet[session_nr][it].base);
 				telnet[session_nr][it].write = telnet[session_nr][it].base;
 				telnet[session_nr][it].nb_chars = 0;
-			} else {
-				if ((size_t)telnet[session_nr][it].nb_chars >= telnet_str_bufsize - 1) {
-		*(telnet[session_nr][it].write) = '\0';
-		my_log_telnet(!g_mirror_mode && current_fd == g_connection_socks[session_nr], telnet[session_nr][it].base);
-		telnet[session_nr][it].write = telnet[session_nr][it].base;
-		telnet[session_nr][it].nb_chars = 0;
-		if (!telnet_max_line_size_hit) {
-			my_logf(LL_WARNING, LP_DATETIME,
-										"%s: telnet max line size hit, consider increasing it by increasing the buffer size", i_name);
-			telnet_max_line_size_hit = TRUE;
-		}
+				if (!telnet_max_line_size_hit) {
+					my_logf(LL_WARNING, LP_DATETIME,
+												"%s: telnet max line size hit, consider increasing it by increasing the buffer size", i_name);
+					telnet_max_line_size_hit = TRUE;
 				}
-				*(telnet[session_nr][it].write) = c;
-				telnet[session_nr][it].write++;
-				telnet[session_nr][it].nb_chars++;
-			}
-			telnet[session_nr][it].last_cr = (c == '\r');
-						if (telnet[session_nr][it].telnet_ok && c < 32 && (c != '\r' && c != '\n' && !isspace(c))) {
-							my_logs(LL_WARNING, LP_DATETIME, "Unprintable character encountered although --telnet option in use");
-							telnet[session_nr][it].telnet_ok = FALSE;
 						}
-		}
-	} else {
-		snprintf(mystring, sizeof(mystring), "%s sent %li bytes (0x%04X)", i_name, nb_bytes_received, (unsigned int)nb_bytes_received);
-		my_logs(LL_NORMAL, LP_DATETIME, mystring);
-		my_log_buffer(buffer[session_nr], (unsigned int)nb_bytes_received, &buffer_telnet_ok[session_nr]);
-	}
-	if (g_mirror_mode) {
-		resend_sock = g_session_socks[session_nr];
-	} else {
-		resend_sock = (current_fd == g_session_socks[session_nr] ? g_connection_socks[session_nr] : g_session_socks[session_nr]);
-	}
-	
-	//my_logf(LL_DEBUG, LP_DATETIME, "Will forward TCP data to alternate peer, size: %li", (unsigned int)nb_bytes_received);
-	size_t ofs=0;
-	size_t len=(size_t)nb_bytes_received;
-	do {
+						*(telnet[session_nr][it].write) = c;
+						telnet[session_nr][it].write++;
+						telnet[session_nr][it].nb_chars++;
+					}
+					telnet[session_nr][it].last_cr = (c == '\r');
+								if (telnet[session_nr][it].telnet_ok && c < 32 && (c != '\r' && c != '\n' && !isspace(c))) {
+									my_logs(LL_WARNING, LP_DATETIME, "Unprintable character encountered although --telnet option in use");
+									telnet[session_nr][it].telnet_ok = FALSE;
+								}
+				}
+			} else {
+				snprintf(mystring, sizeof(mystring), "%s sent %li bytes (0x%04X)", i_name, nb_bytes_received, (unsigned int)nb_bytes_received);
+				my_logs(LL_NORMAL, LP_DATETIME, mystring);
+				my_log_buffer(buffer[session_nr], (unsigned int)nb_bytes_received, &buffer_telnet_ok[session_nr]);
+			}
+			if (g_mirror_mode) {
+				resend_sock = g_session_socks[session_nr];
+			} else {
+				resend_sock = (current_fd == g_session_socks[session_nr] ? g_connection_socks[session_nr] : g_session_socks[session_nr]);
+			}
+			
+			//my_logf(LL_DEBUG, LP_DATETIME, "Will forward TCP data to alternate peer, size: %li", (unsigned int)nb_bytes_received);
+			size_t ofs=0;
+			size_t len=(size_t)nb_bytes_received;
+			do {
 					my_logf(LL_DEBUG, LP_DATETIME, "Will forward TCP data to alternate peer %d, size: %li", resend_sock, (unsigned int)len);
 					if ((nb_bytes_sent = send(resend_sock, &buffer[session_nr][ofs], len, 0)) == SEND_ERROR) {
 						my_logf(LL_ERROR, LP_DATETIME, "send() error, %s", os_last_err_desc(s_err, sizeof(s_err)));
