@@ -16,14 +16,14 @@
 
 #if defined(_WIN32) || defined(_WIN64)
 typedef int socklen_t;
-#define SHUT_RD   SD_RECEIVE 
-#define SHUT_WR   SD_SEND 
+#define SHUT_RD		SD_RECEIVE 
+#define SHUT_WR		SD_SEND 
 #define SHUT_RDWR SD_BOTH 
-#define EADDRINUSE  98
+#define EADDRINUSE	98
 #endif
 
 #define FALSE 0
-#define TRUE  1
+#define TRUE	1
 
 #define DEFAULT_CONNECT_TIMEOUT 5
 
@@ -43,17 +43,17 @@ typedef int socklen_t;
 
 #define MAXSESSIONS 100
 
-  // Level of log
+	// Level of log
 typedef enum {LL_ERROR = -1, LL_WARNING = 0, LL_NORMAL = 1, LL_VERBOSE = 2, LL_DEBUG = 3} loglevel_t;
-  // Type of prefix output in the log
+	// Type of prefix output in the log
 typedef enum {LP_DATETIME, LP_NOTHING, LP_2SPACE, LP_INDENT} logdisp_t;
 
 struct telnet_t {
-  char *base;
-  char *write;
-  int nb_chars;
-  int last_cr;
-  int telnet_ok;
+	char *base;
+	char *write;
+	int nb_chars;
+	int last_cr;
+	int telnet_ok;
 };
 
 void os_set_sock_nonblocking_mode(int sock);
