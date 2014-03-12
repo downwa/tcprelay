@@ -10,3 +10,5 @@
 /config.h
 /config.log
 /doc/Makefile
+/src/*.kate-swp
+/*.kate-swp
