@@ -438,6 +438,10 @@ int newSession() {
 	struct sockaddr_in client;
 	unsigned int client_size = sizeof(client);
 	int session_nr=alloc_session();
+	if(session_nr == -1) {
+		my_logf(LL_ERROR, LP_DATETIME, "alloc_session() out of available sessions (more than %d sessions in use)", MAXSESSIONS);
+		return -1;
+	}
 
 		// String to store error descriptions
 	char s_err[ERR_STR_BUFSIZE];
