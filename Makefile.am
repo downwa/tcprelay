@@ -5,7 +5,7 @@ ACLOCAL_AMFLAGS = -I admin
 
 dist_doc_DATA=README
 
-EXTRA_DIST=tcprelay.bkl gen-win-makefile.cmd makefile.gcc extracfg.h src/bsdstring.c
+EXTRA_DIST=tcprelay.bkl gen-win-makefile.cmd makefile.gcc extracfg.h src/bsdstring.c bootstrap
 
 dist-hook:
 	rm -rf `find $(distdir) -name .svn`
