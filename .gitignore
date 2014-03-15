@@ -12,6 +12,6 @@
 /doc/Makefile
 /src/*.kate-swp
 /*.kate-swp
-.*.swp
 /autom4te.cache
 /tcprelay-*.tar.gz
+
