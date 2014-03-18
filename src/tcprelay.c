@@ -45,6 +45,7 @@ const char *PREFIX_SENT = ">>> ";
 
 char server_name[300];
 char logfile[1000];
+char connexe[1024]={0}; // Optional command to run at every connection
 
 int server_port = 0;
 int listen_port = 0;
@@ -73,6 +74,7 @@ int buffer_telnet_ok[MAXSESSIONS];
 int connection_cli_is_live[MAXSESSIONS],connection_srv_is_live[MAXSESSIONS];
 size_t telnet_str_bufsize;
 int bport[MAXSESSIONS];
+pid_t child_pid[MAXSESSIONS];
 
 #include "bsdstring.c"
 /* NOTE: Rationale for using BSD strlcat/strlcpy instead of strncat/strncpy:
@@ -413,6 +415,9 @@ int closeSession(int session_nr, int current_fd, const char *i_name) {
 		}
 		int it;
 		for (it = 0; it < 2; it++) { free(telnet[session_nr][it].base); telnet[session_nr][it].base=NULL; }
+		if(connexe[0]) { // Reap children on exit (but don't wait if child hasn't exited)
+			waitpid(child_pid[session_nr], NULL, WNOHANG);
+		}
 	}
 	return doBreak;
 }  
@@ -454,9 +459,11 @@ int newSession() {
 		my_logf(LL_ERROR, LP_DATETIME, "accept() error, %s", os_last_err_desc(s_err, sizeof(s_err)));
 		return -1;
 	}
-	my_logf(LL_NORMAL, LP_DATETIME, "Accepted connection from %s: session_nr=%d", inet_ntoa(client.sin_addr), session_nr/*g_session_socks[session_nr]*/);
+	char ipaddr[16];
+	strlcpy(ipaddr, inet_ntoa(client.sin_addr), sizeof(ipaddr)); // NOTE: BSD strlcpy safer than strncpy
+	my_logf(LL_NORMAL, LP_DATETIME, "Accepted connection from %s: session_nr=%d", ipaddr, session_nr/*g_session_socks[session_nr]*/);
 	if(ip_as_port) {
-		char *pp=strrchr(inet_ntoa(client.sin_addr),'.');
+		char *pp=strrchr(ipaddr,'.');
 		bport[session_nr]=0;
 		if(pp) { bport[session_nr]=atoi(&pp[1]); }
 	}
@@ -497,6 +504,17 @@ int newSession() {
 		telnet[session_nr][it].telnet_ok = TRUE;
 	}
 
+	if(connexe[0]) {
+		if((child_pid[session_nr] = fork()) < 0 ) {
+			my_logf(LL_ERROR, LP_DATETIME, "fork() error, %s", os_last_err_desc(s_err, sizeof(s_err)));
+		}
+		else if(child_pid[session_nr] == 0) { // Child
+			my_logf(LL_VERBOSE, LP_DATETIME, "Exec child %s %s", connexe, ipaddr);
+			execl(connexe, connexe, ipaddr, NULL);
+			my_logf(LL_ERROR, LP_DATETIME, "execl() error, %s", os_last_err_desc(s_err, sizeof(s_err)));
+			_exit(1); // Exiting child, not the parent
+		}
+	}
 	return session_nr;
 }
 
@@ -879,6 +897,8 @@ void printhelp() {
   printf("      --ip-as-port    Use last byte of IP to form source port when connecting to server:\n");
   printf("                      Try up to 252 times using this formula (where ipa is the last\n");
   printf("                      IP byte): p = 1024 + (256 * n) + ipa\n");
+	printf("      --connexe       Fork an external program for every new connection\n");
+	printf("                      Command will have client IP address passed as argment\n");
   printf("  -l  --log-file      Log file (default: %s)\n", DEFAULT_LOGFILE);
   printf("  -n  --nodisplay-log Don't print the log on the screen\n");
 }
@@ -909,9 +929,10 @@ void parse_options(int argc, char *argv[]) {
 		{"help", no_argument, NULL, 'h'},
 		{"version", no_argument, NULL, 'v'},
 		{"verbose", no_argument, NULL, 'V'},
-		{"quiet", no_argument, NULL, 'q'},
+		{"quiet", no_argument, NULL, 'q'},		
 		{"minimal-log", no_argument, NULL, 2},
 		{"ip-as-port", no_argument, NULL, 3},
+		{"connexe", required_argument, NULL, 4},
 		{"server", required_argument, NULL, 's'},
 		{"mirror", no_argument, NULL, 'm'},
 		{"listen-port", required_argument, NULL, 'p'},
@@ -970,7 +991,7 @@ void parse_options(int argc, char *argv[]) {
 				}
 				server_name_set = TRUE;
 				break;
-
+				
 			case 'm':
 				g_mirror_mode = TRUE;
 				break;
@@ -1003,6 +1024,10 @@ void parse_options(int argc, char *argv[]) {
 				ip_as_port = TRUE;
 				break;
 
+			case 4: // connexe
+				strlcpy(connexe, optarg, sizeof(connexe)); // NOTE: BSD strlcpy safer than strncpy
+				break;
+				
 			case 'l':
 				strlcpy(logfile, optarg, sizeof(logfile)); // NOTE: BSD strlcpy safer than strncpy
 				break;
