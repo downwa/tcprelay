@@ -74,7 +74,6 @@ int buffer_telnet_ok[MAXSESSIONS];
 int connection_cli_is_live[MAXSESSIONS],connection_srv_is_live[MAXSESSIONS];
 size_t telnet_str_bufsize;
 int bport[MAXSESSIONS];
-pid_t child_pid[MAXSESSIONS];
 
 #include "bsdstring.c"
 /* NOTE: Rationale for using BSD strlcat/strlcpy instead of strncat/strncpy:
@@ -415,9 +414,6 @@ int closeSession(int session_nr, int current_fd, const char *i_name) {
 		}
 		int it;
 		for (it = 0; it < 2; it++) { free(telnet[session_nr][it].base); telnet[session_nr][it].base=NULL; }
-		if(connexe[0]) { // Reap children on exit (but don't wait if child hasn't exited)
-			waitpid(child_pid[session_nr], NULL, WNOHANG);
-		}
 	}
 	return doBreak;
 }  
@@ -505,10 +501,20 @@ int newSession() {
 	}
 
 	if(connexe[0]) {
-		if((child_pid[session_nr] = fork()) < 0 ) {
+		pid_t child_pid;
+		if((child_pid = fork()) < 0 ) {
 			my_logf(LL_ERROR, LP_DATETIME, "fork() error, %s", os_last_err_desc(s_err, sizeof(s_err)));
 		}
-		else if(child_pid[session_nr] == 0) { // Child
+		else if(child_pid == 0) { // Child
+			// Close unused child fds to free resources
+			// NOTE: This *could* be disabled if child needs to send over socket, but that would have to
+			// be coordinated with server to avoid confusion.
+			int xa;
+			for(xa=0; xa<MAXSESSIONS; xa++) {
+				if(g_connection_socks[xa] != -1) { close(g_connection_socks[xa]); }
+				if(g_session_socks[xa] != -1)    { close(g_session_socks[xa]); }
+			}
+			// Now exec	
 			my_logf(LL_VERBOSE, LP_DATETIME, "Exec child %s %s", connexe, ipaddr);
 			execl(connexe, connexe, ipaddr, NULL);
 			my_logf(LL_ERROR, LP_DATETIME, "execl() error, %s", os_last_err_desc(s_err, sizeof(s_err)));
@@ -699,6 +705,7 @@ void almost_neverending_loop() {
 		my_logf(LL_DEBUG, LP_DATETIME, "select wait fdmax+1=%d",fdmax+1);
 		int ret=select(fdmax + 1, &fdset, NULL, NULL, NULL);
 		if (ret == SELECT_ERROR) {
+			if(errno == EINTR && !flag_interrupted) { continue; }
 			fatal_error("select() error, %s", os_last_err_desc(s_err, sizeof(s_err)));
 		}
 		my_logf(LL_DEBUG, LP_DATETIME, "select:activity on %d fds...",ret);
@@ -863,6 +870,11 @@ void sigint_handler(int sig) {
 	flag_interrupted = TRUE;
 	my_logs(LL_VERBOSE, LP_DATETIME, "Received INT signal, quitting...");
 	exit(EXIT_FAILURE);
+}
+
+void sigchld_handler(int sig) {
+	my_logs(LL_VERBOSE, LP_DATETIME, "Received CHLD signal, reaping...");
+	while (waitpid(-1, NULL, WNOHANG) > 0) { ; }
 }
 
 //
@@ -1086,7 +1098,8 @@ int main(int argc, char *argv[]) {
 	signal(SIGTERM, sigterm_handler);
 	signal(SIGABRT, sigabrt_handler);
 	signal(SIGINT, sigint_handler);
-
+	signal(SIGCHLD, sigchld_handler);
+	
 	my_log_open();
 	my_logs(LL_NORMAL, LP_DATETIME, PACKAGE_STRING " start");
 
