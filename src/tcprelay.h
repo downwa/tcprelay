@@ -42,6 +42,7 @@ typedef int socklen_t;
 #define GETTIMEOFDAY_ERROR -1
 
 #define MAXSESSIONS 100
+#define LOGROTATE_SECONDS	3600
 
 	// Level of log
 typedef enum {LL_ERROR = -1, LL_WARNING = 0, LL_NORMAL = 1, LL_VERBOSE = 2, LL_DEBUG = 3} loglevel_t;

@@ -1,3 +1,7 @@
+2014-03-27 Sébastien Millet <sebastien.millet1@club-internet.fr>
+
+	* Release 1.3.1 built
+
 2014-03-10 Warren Downs <wdowns@choggiung.com>
 
 	* Merged 1.3 changes with bug-fix for send loop (had a =- instead of -=).

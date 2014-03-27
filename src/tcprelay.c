@@ -238,8 +238,8 @@ void my_log_close() {
 //
 void my_log_core_get_dt_str(const logdisp_t log_disp, char *dt, size_t dt_bufsize) {
 	time_t ltime = time(NULL);
-	if(ltime - prev_log_time > 3600) {
-		my_log_close(); my_log_open(); // Reopen log to allow for log rotation, about once per hour
+	if(ltime - prev_log_time > LOGROTATE_SECONDS) {
+		my_log_close(); my_log_open(); // Reopen log to allow for log rotation, about once every LOGROTATE_SECONDS
 	}
 	prev_log_time = ltime;
 	struct tm ts;
