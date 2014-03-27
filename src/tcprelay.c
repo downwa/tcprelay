@@ -60,7 +60,7 @@ int minimal_log = FALSE; // Turn off data logging
 	// using this formula (where ipa is the last IP byte): p=1024+(256*n)+ipa
 int ip_as_port = FALSE;
 
-FILE *log_fd;
+FILE *log_fd = NULL;
 
 int flag_interrupted = FALSE;
 int quitting = FALSE;
@@ -74,6 +74,8 @@ int buffer_telnet_ok[MAXSESSIONS];
 int connection_cli_is_live[MAXSESSIONS],connection_srv_is_live[MAXSESSIONS];
 size_t telnet_str_bufsize;
 int bport[MAXSESSIONS];
+
+time_t prev_log_time = 0;
 
 #include "bsdstring.c"
 /* NOTE: Rationale for using BSD strlcat/strlcpy instead of strncat/strncpy:
@@ -205,6 +207,7 @@ void fatal_error(const char *format, ...) {
 	vsnprintf(str, REGULAR_STR_STRBUFSIZE, format, args);
 	strlcat(str, "\n", REGULAR_STR_STRBUFSIZE); // NOTE: BSD strlcat is safer than strncat
 	fprintf(stderr, str, NULL);
+	my_logf(LL_ERROR, LP_DATETIME, "%s",str); // Log any fatal error
 	va_end(args);
 	exit(EXIT_FAILURE);
 }
@@ -227,7 +230,7 @@ void my_log_open() {
 // Closes the program log
 //
 void my_log_close() {
-	fclose(log_fd);
+	if(log_fd) { fclose(log_fd); log_fd = NULL; }
 }
 
 //
@@ -235,6 +238,10 @@ void my_log_close() {
 //
 void my_log_core_get_dt_str(const logdisp_t log_disp, char *dt, size_t dt_bufsize) {
 	time_t ltime = time(NULL);
+	if(ltime - prev_log_time > 3600) {
+		my_log_close(); my_log_open(); // Reopen log to allow for log rotation, about once per hour
+	}
+	prev_log_time = ltime;
 	struct tm ts;
 	ts = *localtime(&ltime);
 
@@ -265,8 +272,8 @@ void my_log_core_output(const char *s) {
 	fflush(log_fd);
 	if (display_log) {
 		puts(s);
+		fflush(stdout);
 	}
-	fflush(stdout);
 }
 
 //
@@ -846,8 +853,8 @@ void atexit_handler() {
 
 	os_closesocket(g_listen_sock); g_listen_sock=-1;
 
-	my_logs(LL_NORMAL, LP_DATETIME, PACKAGE_NAME " stop");
-	my_logs(LL_NORMAL, LP_NOTHING, "");
+	my_logs(LL_ERROR, LP_DATETIME, PACKAGE_NAME " stop"); // Always log the important event of stopping
+	my_logs(LL_ERROR, LP_NOTHING, "");
 	my_log_close();
 }
 
@@ -856,19 +863,25 @@ void atexit_handler() {
 //
 void sigterm_handler(int sig) {
 	flag_interrupted = TRUE;
-	my_logs(LL_VERBOSE, LP_DATETIME, "Received TERM signal, quitting...");
+	my_logs(LL_ERROR, LP_DATETIME, "Received TERM signal, quitting..."); // Log any signal that causes exit
 	exit(EXIT_FAILURE);
 }
 
 void sigabrt_handler(int sig) {
 	flag_interrupted = TRUE;
-	my_logs(LL_VERBOSE, LP_DATETIME, "Received ABORT signal, quitting...");
+	my_logs(LL_ERROR, LP_DATETIME, "Received ABORT signal, quitting..."); // Log any signal that causes exit
 	exit(EXIT_FAILURE);
 }
 
 void sigint_handler(int sig) {
 	flag_interrupted = TRUE;
-	my_logs(LL_VERBOSE, LP_DATETIME, "Received INT signal, quitting...");
+	my_logs(LL_ERROR, LP_DATETIME, "Received INT signal, quitting..."); // Log any signal that causes exit
+	exit(EXIT_FAILURE);
+}
+
+void sigsegv_handler(int sig) {
+	flag_interrupted = TRUE;
+	my_logs(LL_ERROR, LP_DATETIME, "Received SEGV signal, quitting..."); // Log any signal that causes exit
 	exit(EXIT_FAILURE);
 }
 
@@ -1097,11 +1110,12 @@ int main(int argc, char *argv[]) {
 	atexit(atexit_handler);
 	signal(SIGTERM, sigterm_handler);
 	signal(SIGABRT, sigabrt_handler);
-	signal(SIGINT, sigint_handler);
+	signal(SIGINT,  sigint_handler);
+	signal(SIGSEGV, sigsegv_handler);
 	signal(SIGCHLD, sigchld_handler);
 	
-	my_log_open();
-	my_logs(LL_NORMAL, LP_DATETIME, PACKAGE_STRING " start");
+	// my_log_open(); // NOTE: Now automatically opened on first use, and subsequently reopened every hour (for log rotation)
+	my_logs(LL_ERROR, LP_DATETIME, PACKAGE_STRING " start"); // Always log the important event of starting
 
 		// Just to call WSAStartup...
 	os_init_network();
@@ -1115,8 +1129,8 @@ int main(int argc, char *argv[]) {
 		return EXIT_FAILURE;
 	quitting = TRUE;
 
-	my_logs(LL_NORMAL, LP_DATETIME, PACKAGE_NAME " end");
-	my_logs(LL_NORMAL, LP_NOTHING, "");
+	my_logs(LL_ERROR, LP_DATETIME, PACKAGE_NAME " end"); // Always log the important event of ending
+	my_logs(LL_ERROR, LP_NOTHING, "");
 	my_log_close();
 
 	return EXIT_SUCCESS;

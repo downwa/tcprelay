@@ -68,3 +68,4 @@ void fatal_error(const char *format, ...);
 
 void bindPort(int session_nr);
 
+void my_logf(const loglevel_t log_level, const logdisp_t log_disp, const char *format, ...);
