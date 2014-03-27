@@ -68,6 +68,10 @@ Use last byte of IP to form source port when connecting to server: try up to
 252 times using this formula (where ipa is the last IP byte): p = 1024 + (256
 * n) + ipa.
 .TP
+.B \-\-connexe
+Fork an external program for every new connection. Command will have client IP
+address passed as argment
+.TP
 .B \-l,\ \-\-log\-file\ \fIfile\fP
 Write the log in \fIfile\fP. tcprelay.log (in current working directory)
 by default.

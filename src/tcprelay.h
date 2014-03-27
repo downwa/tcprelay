@@ -10,6 +10,8 @@
 
 #include <sys/types.h>
 
+#define UNUSED(x) (void)(x)
+
 #ifndef SOCKET_ERROR
 #define SOCKET_ERROR -1
 #endif

@@ -24,6 +24,7 @@
 
 	// NOT WINDOWS
 #include <sys/socket.h>
+#include <sys/wait.h>
 #include <netinet/in.h>
 #include <arpa/inet.h>
 #include <netdb.h>
@@ -444,7 +445,7 @@ int connect_with_timeout(const struct sockaddr_in *srv, int *connection_sock, st
 
 int newSession() {
 	struct sockaddr_in client;
-	unsigned int client_size = sizeof(client);
+	socklen_t client_size = sizeof(client);
 	int session_nr=alloc_session();
 	if(session_nr == -1) {
 		my_logf(LL_ERROR, LP_DATETIME, "alloc_session() out of available sessions (more than %d sessions in use)", MAXSESSIONS);
@@ -508,6 +509,20 @@ int newSession() {
 	}
 
 	if(connexe[0]) {
+#if defined(_WIN32) || defined(_WIN64)
+		char cmd[MAX_PATH * 2];
+		snprintf(cmd, sizeof(cmd), "\"%s\" \"%s\"", connexe, ipaddr);
+
+		STARTUPINFO si;
+		ZeroMemory(&si, sizeof(si));
+		si.cb = sizeof(si);
+		PROCESS_INFORMATION cmd_pi;
+		ZeroMemory(&cmd_pi, sizeof(cmd_pi));
+
+		if(!CreateProcess(NULL, cmd, NULL, NULL, FALSE, 0, NULL, NULL, &si, &cmd_pi)) {
+			my_logf(LL_ERROR, LP_DATETIME, "CreateProcess error, %s", os_last_err_desc(s_err, sizeof(s_err)));
+		}
+#else
 		pid_t child_pid;
 		if((child_pid = fork()) < 0 ) {
 			my_logf(LL_ERROR, LP_DATETIME, "fork() error, %s", os_last_err_desc(s_err, sizeof(s_err)));
@@ -527,6 +542,7 @@ int newSession() {
 			my_logf(LL_ERROR, LP_DATETIME, "execl() error, %s", os_last_err_desc(s_err, sizeof(s_err)));
 			_exit(1); // Exiting child, not the parent
 		}
+#endif
 	}
 	return session_nr;
 }
@@ -572,7 +588,7 @@ void bindPort(int session_nr) {
 int connect_with_timeout(const struct sockaddr_in *srv, int *connection_sock, struct timeval *tv, const char *desc, int session_nr) {
 	fd_set fdset;
 	FD_ZERO(&fdset);
-	FD_SET(*connection_sock, &fdset);
+	FD_SET((unsigned int)*connection_sock, &fdset);
 
 		// String to store error descriptions
 	char s_err[ERR_STR_BUFSIZE];
@@ -590,7 +606,7 @@ int connect_with_timeout(const struct sockaddr_in *srv, int *connection_sock, st
 			} else {
 				int so_error;
 				socklen_t len = sizeof(so_error);
-				getsockopt(*connection_sock, SOL_SOCKET, SO_ERROR, &so_error, &len);
+				getsockopt(*connection_sock, SOL_SOCKET, SO_ERROR, (void*)&so_error, &len);
 				if (so_error != 0) {
 					my_logf(LL_ERROR, LP_DATETIME, "Socket error connecting to %s, code=%i (%s)", desc, so_error, strerror(so_error));
 				}
@@ -661,7 +677,7 @@ void almost_neverending_loop() {
 		fatal_error("socket() error to create listening socket, %s", os_last_err_desc(s_err, sizeof(s_err)));
 	}
 	int on = 1;
-	if (setsockopt(g_listen_sock, SOL_SOCKET, SO_REUSEADDR, &on, sizeof(on)) == SETSOCKOPT_ERROR) {
+	if (setsockopt(g_listen_sock, SOL_SOCKET, SO_REUSEADDR, (void*)&on, sizeof(on)) == SETSOCKOPT_ERROR) {
 		fatal_error("setsockopt() error, %s", os_last_err_desc(s_err, sizeof(s_err)));
 	}
 
@@ -676,7 +692,7 @@ void almost_neverending_loop() {
 		fatal_error("listen() error, %s", os_last_err_desc(s_err, sizeof(s_err)));
 	}
 
-	int fdmax;
+/*  int fdmax;*/
 	int current_fd;
 
 	fd_set fdset;
@@ -688,23 +704,23 @@ void almost_neverending_loop() {
 	ssize_t nb_bytes_received;
 	ssize_t nb_bytes_sent;
 	int resend_sock;
-	int warned_buffer_too_small;
+/*  int warned_buffer_too_small;*/
 
 	do {
 		telnet_max_line_size_hit = FALSE;
-		warned_buffer_too_small = FALSE;
+/*    warned_buffer_too_small = FALSE;*/
 
 			/** Add all sockets to fdset (including listen socket, to be notified of new connections) **/
 		FD_ZERO(&fdset);
-		FD_SET(g_listen_sock, &fdset);
+		FD_SET((unsigned int)g_listen_sock, &fdset);
 		int fdmax=g_listen_sock;
 		int xa;
 		for(xa=0; xa<MAXSESSIONS; xa++) { // Add all active sockets
 			if(g_connection_socks[xa] > -1) {
-				FD_SET(g_connection_socks[xa], &fdset); my_logf(LL_DEBUG, LP_DATETIME, "Watching conn fd %d",g_connection_socks[xa]);
+				FD_SET((unsigned int)g_connection_socks[xa], &fdset); my_logf(LL_DEBUG, LP_DATETIME, "Watching conn fd %d",g_connection_socks[xa]);
 			}
 			if(g_session_socks[xa] > -1) {
-				FD_SET(g_session_socks[xa], &fdset); my_logf(LL_DEBUG, LP_DATETIME, "Watching sess fd %d",g_session_socks[xa]);
+				FD_SET((unsigned int)g_session_socks[xa], &fdset); my_logf(LL_DEBUG, LP_DATETIME, "Watching sess fd %d",g_session_socks[xa]);
 			}
 			if(g_connection_socks[xa] > fdmax) { fdmax=g_connection_socks[xa]; }
 			if(g_session_socks[xa] > fdmax) { fdmax=g_session_socks[xa]; }
@@ -795,7 +811,7 @@ void almost_neverending_loop() {
 								}
 				}
 			} else {
-				snprintf(mystring, sizeof(mystring), "%s sent %li bytes (0x%04X)", i_name, nb_bytes_received, (unsigned int)nb_bytes_received);
+				snprintf(mystring, sizeof(mystring), "%s sent %li bytes (0x%04X)", i_name, (long int)nb_bytes_received, (unsigned int)nb_bytes_received);
 				my_logs(LL_NORMAL, LP_DATETIME, mystring);
 				my_log_buffer(buffer[session_nr], (unsigned int)nb_bytes_received, &buffer_telnet_ok[session_nr]);
 			}
@@ -806,11 +822,11 @@ void almost_neverending_loop() {
 			}
 			
 			//my_logf(LL_DEBUG, LP_DATETIME, "Will forward TCP data to alternate peer, size: %li", (unsigned int)nb_bytes_received);
-			size_t ofs=0;
-			size_t len=(size_t)nb_bytes_received;
+			ssize_t ofs=0;
+			ssize_t len=nb_bytes_received;
 			do {
 					my_logf(LL_DEBUG, LP_DATETIME, "Will forward TCP data to alternate peer %d, size: %li", resend_sock, (unsigned int)len);
-					if ((nb_bytes_sent = send(resend_sock, &buffer[session_nr][ofs], len, 0)) == SEND_ERROR) {
+					if ((nb_bytes_sent = send(resend_sock, &buffer[session_nr][ofs], (size_t)len, 0)) == SEND_ERROR) {
 						my_logf(LL_ERROR, LP_DATETIME, "send() error, %s", os_last_err_desc(s_err, sizeof(s_err)));
 						closeSession(session_nr, current_fd, i_name); break;
 					}
@@ -862,33 +878,43 @@ void atexit_handler() {
 // Manage signals
 //
 void sigterm_handler(int sig) {
+UNUSED(sig);
+
 	flag_interrupted = TRUE;
 	my_logs(LL_ERROR, LP_DATETIME, "Received TERM signal, quitting..."); // Log any signal that causes exit
 	exit(EXIT_FAILURE);
 }
 
 void sigabrt_handler(int sig) {
+UNUSED(sig);
+
 	flag_interrupted = TRUE;
 	my_logs(LL_ERROR, LP_DATETIME, "Received ABORT signal, quitting..."); // Log any signal that causes exit
 	exit(EXIT_FAILURE);
 }
 
 void sigint_handler(int sig) {
+UNUSED(sig);
+
 	flag_interrupted = TRUE;
 	my_logs(LL_ERROR, LP_DATETIME, "Received INT signal, quitting..."); // Log any signal that causes exit
 	exit(EXIT_FAILURE);
 }
 
 void sigsegv_handler(int sig) {
+UNUSED(sig);
+
 	flag_interrupted = TRUE;
 	my_logs(LL_ERROR, LP_DATETIME, "Received SEGV signal, quitting..."); // Log any signal that causes exit
 	exit(EXIT_FAILURE);
 }
 
+#if !defined(_WIN32) && !defined(_WIN64)
 void sigchld_handler(int sig) {
 	my_logs(LL_VERBOSE, LP_DATETIME, "Received CHLD signal, reaping...");
 	while (waitpid(-1, NULL, WNOHANG) > 0) { ; }
 }
+#endif
 
 //
 // Manage errors with provided options
@@ -905,27 +931,27 @@ void option_error(const char *s) {
 void printhelp() {
 	printf("Usage: " PACKAGE_NAME " -s server[:port] -p port [options...]\n\n");
 	printf("Accept incoming connections and redirect them to the specified server.\n\n");
-  printf("  -h  --help          Display this help text\n");
-  printf("  -v  --version       Display version information and exit\n");
-  printf("  -V  --verbose       Be more talkative\n");
-  printf("      --minimal-log   Don't log data, only connection info\n");
-  printf("  -q  --quiet         Be less talkative\n");
-  printf("  -s  --server        Server to connect to, syntax: server_name:port\n");
-  printf("  -m  --mirror        Mirror mode. Don't connect to a server,\n");
-  printf("                      simply send back received bytes to the client.\n");
-  printf("                      Assumed if no server is provided.\n");
-  printf("  -p  --listen-port   Port to listen to, it is the server port by default\n");
-  printf("  -r  --run-once      Do one run and exit\n");
-  printf("  -t  --telnet        Log trafic assuming data is telnet-style\n");
-  printf("  -b  --bufsize       Size of buffer in bytes for network data (default: %u)\n", DEFAULT_BUFFER_SIZE);
-  printf("      --timeout       Timeout in seconds to connect to server (default: %i)\n", DEFAULT_CONNECT_TIMEOUT);
-  printf("      --ip-as-port    Use last byte of IP to form source port when connecting to server:\n");
-  printf("                      Try up to 252 times using this formula (where ipa is the last\n");
-  printf("                      IP byte): p = 1024 + (256 * n) + ipa\n");
+	printf("  -h  --help          Display this help text\n");
+	printf("  -v  --version       Display version information and exit\n");
+	printf("  -V  --verbose       Be more talkative\n");
+	printf("      --minimal-log   Don't log data, only connection info\n");
+	printf("  -q  --quiet         Be less talkative\n");
+	printf("  -s  --server        Server to connect to, syntax: server_name:port\n");
+	printf("  -m  --mirror        Mirror mode. Don't connect to a server,\n");
+	printf("                      simply send back received bytes to the client.\n");
+	printf("                      Assumed if no server is provided.\n");
+	printf("  -p  --listen-port   Port to listen to, it is the server port by default\n");
+	printf("  -r  --run-once      Do one run and exit\n");
+	printf("  -t  --telnet        Log trafic assuming data is telnet-style\n");
+	printf("  -b  --bufsize       Size of buffer in bytes for network data (default: %u)\n", DEFAULT_BUFFER_SIZE);
+	printf("      --timeout       Timeout in seconds to connect to server (default: %i)\n", DEFAULT_CONNECT_TIMEOUT);
+	printf("      --ip-as-port    Use last byte of IP to form source port when connecting to server:\n");
+	printf("                      Try up to 252 times using this formula (where ipa is the last\n");
+	printf("                      IP byte): p = 1024 + (256 * n) + ipa\n");
 	printf("      --connexe       Fork an external program for every new connection\n");
 	printf("                      Command will have client IP address passed as argment\n");
-  printf("  -l  --log-file      Log file (default: %s)\n", DEFAULT_LOGFILE);
-  printf("  -n  --nodisplay-log Don't print the log on the screen\n");
+	printf("  -l  --log-file      Log file (default: %s)\n", DEFAULT_LOGFILE);
+	printf("  -n  --nodisplay-log Don't print the log on the screen\n");
 }
 
 //
@@ -1112,7 +1138,9 @@ int main(int argc, char *argv[]) {
 	signal(SIGABRT, sigabrt_handler);
 	signal(SIGINT,  sigint_handler);
 	signal(SIGSEGV, sigsegv_handler);
+#if !defined(_WIN32) && !defined(_WIN64)
 	signal(SIGCHLD, sigchld_handler);
+#endif
 	
 	// my_log_open(); // NOTE: Now automatically opened on first use, and subsequently reopened every hour (for log rotation)
 	my_logs(LL_ERROR, LP_DATETIME, PACKAGE_STRING " start"); // Always log the important event of starting
