@@ -1,3 +1,8 @@
+2014-03-27 Warren Downs <wdowns@choggiung.com>
+
+	* Close log files hourly, to allow for external log rotation (not included).
+	* Added --connexe feature (Runs external command every time client connects).
+
 2014-03-10 Warren Downs <wdowns@choggiung.com>
 
 	* Merged 1.3 changes with bug-fix for send loop (had a =- instead of -=).
