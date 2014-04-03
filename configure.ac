@@ -5,7 +5,7 @@
 
 AC_PREREQ([2.68])
 
-AC_INIT([tcprelay], [1.3], [sebastien.millet1@club-internet.fr])
+AC_INIT([tcprelay], [1.3.1], [sebastien.millet1@club-internet.fr])
 
 AC_CONFIG_SRCDIR([src/tcprelay.h])
 AC_CONFIG_AUX_DIR([admin])
