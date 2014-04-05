@@ -1,0 +1,43 @@
+1) Bug fix (added 5/4/14)
+=========================
+
+- Fix an issue seen under Windows when tcprelay stops:
+
+			05/04/14 08:39:36.093750  tcprelay stop
+
+			05/04/14 08:39:36.093750  select() error, code=10038 (Une opÚration a ÚtÚ tentÚe
+			 sur autre chose qu'un socket.)
+
+2) Bug fix (added 5/4/14)
+=========================
+
+- Fix an issue with useless complains when --telnet option is used and Windows telnet client is used, due to TCP sending chars one by one.
+
+Example:
+			05/04/14 08:42:28.296875  tcprelay 1.3.1 start
+			05/04/14 08:42:47.015625  Accepted connection from 127.0.0.1: session_nr=0
+			05/04/14 08:42:47.031250  Connected to smtp.sfr.fr:25: session_nr=0
+			05/04/14 08:42:47.484375  <<< 220 msfrf2507.sfr.fr ESMTP ABO **************************
+			05/04/14 08:42:48.609375  [CLI]: pending characters not terminated by internet new line
+			05/04/14 08:42:48.609375  >>> e
+			05/04/14 08:42:48.875000  [CLI]: pending characters not terminated by internet new line
+			05/04/14 08:42:48.875000  >>> eh
+			05/04/14 08:42:49.015625  [CLI]: pending characters not terminated by internet new line
+			05/04/14 08:42:49.015625  >>> ehl
+			05/04/14 08:42:49.234375  [CLI]: pending characters not terminated by internet new line
+			05/04/14 08:42:49.234375  >>> ehlo
+			05/04/14 08:42:49.343750  [CLI]: pending characters not terminated by internet new line
+			05/04/14 08:42:49.343750  >>> ehlo 
+			05/04/14 08:42:49.531250  [CLI]: pending characters not terminated by internet new line
+			05/04/14 08:42:49.531250  >>> ehlo w
+			05/04/14 08:42:49.578125  [CLI]: pending characters not terminated by internet new line
+			05/04/14 08:42:49.578125  >>> ehlo wo
+			05/04/14 08:42:49.718750  [CLI]: pending characters not terminated by internet new line
+			05/04/14 08:42:49.718750  >>> ehlo wor
+			05/04/14 08:42:49.765625  [CLI]: pending characters not terminated by internet new line
+			05/04/14 08:42:49.765625  >>> ehlo worl
+			05/04/14 08:42:49.906250  [CLI]: pending characters not terminated by internet new line
+			05/04/14 08:42:49.906250  >>> ehlo world
+			05/04/14 08:42:50.765625  >>> ehlo world
+			05/04/14 08:42:50.828125  <<< 250-msfrf2507.sfr.fr
+
