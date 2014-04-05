@@ -729,7 +729,10 @@ void almost_neverending_loop() {
 		int ret=select(fdmax + 1, &fdset, NULL, NULL, NULL);
 		if (ret == SELECT_ERROR) {
 			if(errno == EINTR && !flag_interrupted) { continue; }
-			fatal_error("select() error, %s", os_last_err_desc(s_err, sizeof(s_err)));
+			if (!flag_interrupted) {
+				fatal_error("select() error, %s", os_last_err_desc(s_err, sizeof(s_err)));
+			}
+			exit(EXIT_SUCCESS);
 		}
 		my_logf(LL_DEBUG, LP_DATETIME, "select:activity on %d fds...",ret);
 		
@@ -777,54 +780,54 @@ void almost_neverending_loop() {
 					warned_buffer_too_small = TRUE;
 				}
 			*/
-			if (telnet_log) {
-				int it = (current_fd == g_session_socks[session_nr] ? 0 : 1);
-				char c;
-				int bufwalker;
-				for (bufwalker = 0; bufwalker < nb_bytes_received; bufwalker++) {
-					c = buffer[session_nr][bufwalker];
-					if (c == '\n' && telnet[session_nr][it].last_cr) {
-						*(telnet[session_nr][it].write - 1) = '\0';
-						my_log_telnet(!g_mirror_mode && current_fd == g_connection_socks[session_nr], telnet[session_nr][it].base);
-						telnet[session_nr][it].write = telnet[session_nr][it].base;
-						telnet[session_nr][it].nb_chars = 0;
-					} else {
-						if ((size_t)telnet[session_nr][it].nb_chars >= telnet_str_bufsize - 1) {
-				*(telnet[session_nr][it].write) = '\0';
-				my_log_telnet(!g_mirror_mode && current_fd == g_connection_socks[session_nr], telnet[session_nr][it].base);
-				telnet[session_nr][it].write = telnet[session_nr][it].base;
-				telnet[session_nr][it].nb_chars = 0;
-				if (!telnet_max_line_size_hit) {
-					my_logf(LL_WARNING, LP_DATETIME,
-												"%s: telnet max line size hit, consider increasing it by increasing the buffer size", i_name);
-					telnet_max_line_size_hit = TRUE;
-				}
-						}
-						*(telnet[session_nr][it].write) = c;
-						telnet[session_nr][it].write++;
-						telnet[session_nr][it].nb_chars++;
-					}
-					telnet[session_nr][it].last_cr = (c == '\r');
-								if (telnet[session_nr][it].telnet_ok && c < 32 && (c != '\r' && c != '\n' && !isspace(c))) {
-									my_logs(LL_WARNING, LP_DATETIME, "Unprintable character encountered although --telnet option in use");
-									telnet[session_nr][it].telnet_ok = FALSE;
+				if (telnet_log) {
+					int it = (current_fd == g_session_socks[session_nr] ? 0 : 1);
+					char c;
+					int bufwalker;
+					for (bufwalker = 0; bufwalker < nb_bytes_received; bufwalker++) {
+						c = buffer[session_nr][bufwalker];
+						if (c == '\n' && telnet[session_nr][it].last_cr) {
+							*(telnet[session_nr][it].write - 1) = '\0';
+							my_log_telnet(!g_mirror_mode && current_fd == g_connection_socks[session_nr], telnet[session_nr][it].base);
+							telnet[session_nr][it].write = telnet[session_nr][it].base;
+							telnet[session_nr][it].nb_chars = 0;
+						} else {
+							if ((size_t)telnet[session_nr][it].nb_chars >= telnet_str_bufsize - 1) {
+								*(telnet[session_nr][it].write) = '\0';
+								my_log_telnet(!g_mirror_mode && current_fd == g_connection_socks[session_nr], telnet[session_nr][it].base);
+								telnet[session_nr][it].write = telnet[session_nr][it].base;
+								telnet[session_nr][it].nb_chars = 0;
+								if (!telnet_max_line_size_hit) {
+									my_logf(LL_WARNING, LP_DATETIME,
+																"%s: telnet max line size hit, consider increasing it by increasing the buffer size", i_name);
+									telnet_max_line_size_hit = TRUE;
 								}
+							}
+							*(telnet[session_nr][it].write) = c;
+							telnet[session_nr][it].write++;
+							telnet[session_nr][it].nb_chars++;
+						}
+						telnet[session_nr][it].last_cr = (c == '\r');
+						if (telnet[session_nr][it].telnet_ok && c < 32 && (c != '\r' && c != '\n' && !isspace(c))) {
+							my_logs(LL_WARNING, LP_DATETIME, "Unprintable character encountered although --telnet option in use");
+							telnet[session_nr][it].telnet_ok = FALSE;
+						}
+					}
+				} else {
+					snprintf(mystring, sizeof(mystring), "%s sent %li bytes (0x%04X)", i_name, (long int)nb_bytes_received, (unsigned int)nb_bytes_received);
+					my_logs(LL_NORMAL, LP_DATETIME, mystring);
+					my_log_buffer(buffer[session_nr], (unsigned int)nb_bytes_received, &buffer_telnet_ok[session_nr]);
 				}
-			} else {
-				snprintf(mystring, sizeof(mystring), "%s sent %li bytes (0x%04X)", i_name, (long int)nb_bytes_received, (unsigned int)nb_bytes_received);
-				my_logs(LL_NORMAL, LP_DATETIME, mystring);
-				my_log_buffer(buffer[session_nr], (unsigned int)nb_bytes_received, &buffer_telnet_ok[session_nr]);
-			}
-			if (g_mirror_mode) {
-				resend_sock = g_session_socks[session_nr];
-			} else {
-				resend_sock = (current_fd == g_session_socks[session_nr] ? g_connection_socks[session_nr] : g_session_socks[session_nr]);
-			}
-			
-			//my_logf(LL_DEBUG, LP_DATETIME, "Will forward TCP data to alternate peer, size: %li", (unsigned int)nb_bytes_received);
-			ssize_t ofs=0;
-			ssize_t len=nb_bytes_received;
-			do {
+				if (g_mirror_mode) {
+					resend_sock = g_session_socks[session_nr];
+				} else {
+					resend_sock = (current_fd == g_session_socks[session_nr] ? g_connection_socks[session_nr] : g_session_socks[session_nr]);
+				}
+
+				//my_logf(LL_DEBUG, LP_DATETIME, "Will forward TCP data to alternate peer, size: %li", (unsigned int)nb_bytes_received);
+				ssize_t ofs=0;
+				ssize_t len=nb_bytes_received;
+				do {
 					my_logf(LL_DEBUG, LP_DATETIME, "Will forward TCP data to alternate peer %d, size: %li", resend_sock, (unsigned int)len);
 					if ((nb_bytes_sent = send(resend_sock, &buffer[session_nr][ofs], (size_t)len, 0)) == SEND_ERROR) {
 						my_logf(LL_ERROR, LP_DATETIME, "send() error, %s", os_last_err_desc(s_err, sizeof(s_err)));
@@ -835,15 +838,15 @@ void almost_neverending_loop() {
 			}
 		} // END for(current_fd)
 		
-		int it;
-		for (it = 0; it < 2; it++) {
-			if (telnet[session_nr][it].nb_chars >= 1) {
-	my_logf(LL_WARNING, LP_DATETIME,
-					"%s: pending characters not terminated by internet new line", (it == 0 ? CLI_SHORTNAME : SRV_SHORTNAME));
-	*(telnet[session_nr][it].write) = '\0';
-	my_log_telnet(it == 1, telnet[session_nr][it].base);
-			}
-		}
+/*    int it;*/
+/*    for (it = 0; it < 2; it++) {*/
+/*      if (telnet[session_nr][it].nb_chars >= 1) {*/
+/*        my_logf(LL_WARNING, LP_DATETIME,*/
+/*          "%s: pending characters not terminated by internet new line", (it == 0 ? CLI_SHORTNAME : SRV_SHORTNAME));*/
+/*        *(telnet[session_nr][it].write) = '\0';*/
+/*        my_log_telnet(it == 1, telnet[session_nr][it].base);*/
+/*      }*/
+/*    }*/
 	} while (!run_once);
 	
 	os_closesocket(g_listen_sock); g_listen_sock=-1;
