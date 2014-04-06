@@ -1,4 +1,8 @@
-1) Bug fix (added 5/4/14)
+
+
+***
+
+1) Bug fix (added 5/4/14) - DONE
 =========================
 
 - Fix an issue seen under Windows when tcprelay stops:
@@ -8,7 +12,7 @@
 			05/04/14 08:39:36.093750  select() error, code=10038 (Une opÚration a ÚtÚ tentÚe
 			 sur autre chose qu'un socket.)
 
-2) Bug fix (added 5/4/14)
+2) Bug fix (added 5/4/14) - DONE
 =========================
 
 - Fix an issue with useless complains when --telnet option is used and Windows telnet client is used, due to TCP sending chars one by one.

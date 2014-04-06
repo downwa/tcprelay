@@ -14,14 +14,14 @@
 #define PACKAGE_NAME "tcprelay"
 
 /* Define to the full name and version of this package. */
-#define PACKAGE_STRING "tcprelay 1.3.1"
+#define PACKAGE_STRING "tcprelay 1.3.2"
 
 /* Define to the one symbol short name of this package. */
 #define PACKAGE_TARNAME "tcprelay"
 
 /* Define to the version of this package. */
-#define PACKAGE_VERSION "1.3.1"
+#define PACKAGE_VERSION "1.3.2"
 
 /* Version number of package */
-#define VERSION "1.3.1"
+#define VERSION "1.3.2"
 

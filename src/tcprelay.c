@@ -56,6 +56,7 @@ int telnet_log = FALSE;
 int display_log = TRUE;
 int run_once = FALSE;
 int g_mirror_mode = FALSE;
+int test_mode = 0;
 int minimal_log = FALSE; // Turn off data logging
 	// Last byte of IP address used to form source port: Try up to 252 times
 	// using this formula (where ipa is the last IP byte): p=1024+(256*n)+ipa
@@ -255,7 +256,7 @@ void my_log_core_get_dt_str(const logdisp_t log_disp, char *dt, size_t dt_bufsiz
 
 	snprintf(dt, dt_bufsize, "%02i/%02i/%02i %02i:%02i:%02i.%06lu  ", ts.tm_mday, ts.tm_mon + 1, ts.tm_year % 100,
 		ts.tm_hour, ts.tm_min, ts.tm_sec, tv.tv_usec);
-	if (log_disp == LP_NOTHING) {
+	if (log_disp == LP_NOTHING || test_mode >= 1) {
 		strlcpy(dt, "", dt_bufsize); // NOTE: BSD strlcpy is safer than strncpy
 	} else if (log_disp == LP_2SPACE) {
 		strlcpy(dt, "  ", dt_bufsize); // NOTE: BSD strlcpy is safer than strncpy
@@ -319,10 +320,10 @@ void my_logf(const loglevel_t log_level, const logdisp_t log_disp, const char *f
 //
 // Log a telnet line
 //
-void my_log_telnet(const int is_received, const char *s) {
+void my_log_telnet(const int is_received, const char *s, const char *pref) {
 	if(minimal_log) { return; }
 	char prefix[50];
-	strlcpy(prefix, is_received ? PREFIX_RECEIVED : PREFIX_SENT, sizeof(prefix)); // NOTE: BSD strlcpy safer than strncpy
+	snprintf(prefix, sizeof(prefix), "%s %s", pref, is_received ? PREFIX_RECEIVED : PREFIX_SENT);
 	size_t m = strlen(prefix) + strlen(s) + 1;
 	char tmp[m];
 	strlcpy(tmp, prefix, m+1); // NOTE: BSD strlcpy safer than strncpy
@@ -409,7 +410,7 @@ int closeSession(int session_nr, int current_fd, const char *i_name) {
 		shutdown(g_connection_socks[session_nr],SHUT_RD); connection_cli_is_live[session_nr]=FALSE; doBreak=TRUE;
 	}
 	if (current_fd == g_session_socks[session_nr]) {
-		shutdown(g_session_socks[session_nr],SHUT_RD); connection_srv_is_live[session_nr]=FALSE; doBreak=TRUE; 
+		shutdown(g_session_socks[session_nr],SHUT_RD); connection_srv_is_live[session_nr]=FALSE; doBreak=TRUE;
 	}
 	// NOTE: Close both sockets only when other end of both sockets has performed an orderly shutdown
 	if(!connection_cli_is_live[session_nr] && !connection_srv_is_live[session_nr]) {
@@ -424,7 +425,7 @@ int closeSession(int session_nr, int current_fd, const char *i_name) {
 		for (it = 0; it < 2; it++) { free(telnet[session_nr][it].base); telnet[session_nr][it].base=NULL; }
 	}
 	return doBreak;
-}  
+}
 
 // Find an available session (one that has both sockets closed)
 int alloc_session() {
@@ -536,7 +537,7 @@ int newSession() {
 				if(g_connection_socks[xa] != -1) { close(g_connection_socks[xa]); }
 				if(g_session_socks[xa] != -1)    { close(g_session_socks[xa]); }
 			}
-			// Now exec	
+			// Now exec
 			my_logf(LL_VERBOSE, LP_DATETIME, "Exec child %s %s", connexe, ipaddr);
 			execl(connexe, connexe, ipaddr, NULL);
 			my_logf(LL_ERROR, LP_DATETIME, "execl() error, %s", os_last_err_desc(s_err, sizeof(s_err)));
@@ -658,6 +659,7 @@ void almost_neverending_loop() {
 	my_logf(LL_VERBOSE, LP_DATETIME, "Connection timeout: %i", connect_timeout);
 	my_logf(LL_VERBOSE, LP_DATETIME, "Run once: %s", run_once ? "yes" : "no");
 	my_logf(LL_VERBOSE, LP_DATETIME, "Log level: %i", current_log_level);
+	my_logf(LL_VERBOSE, LP_DATETIME, "Test mode: %i", test_mode);
 
 	snprintf(server_desc, 200, "%s:%i", server_name, server_port);
 
@@ -735,11 +737,11 @@ void almost_neverending_loop() {
 			exit(EXIT_SUCCESS);
 		}
 		my_logf(LL_DEBUG, LP_DATETIME, "select:activity on %d fds...",ret);
-		
+
 		int session_nr=-1; // Which session is demanding attention
-		
+
 		// 3. Loop through both connections of all sessions to forward received data back and forth
-		
+
 		for (current_fd = 0; current_fd <= fdmax && !flag_interrupted; current_fd++) {
 			if (!FD_ISSET(current_fd, &fdset)) { continue; }
 			my_logf(LL_DEBUG, LP_DATETIME, "current_fd=%d",current_fd);
@@ -788,13 +790,13 @@ void almost_neverending_loop() {
 						c = buffer[session_nr][bufwalker];
 						if (c == '\n' && telnet[session_nr][it].last_cr) {
 							*(telnet[session_nr][it].write - 1) = '\0';
-							my_log_telnet(!g_mirror_mode && current_fd == g_connection_socks[session_nr], telnet[session_nr][it].base);
+							my_log_telnet(!g_mirror_mode && current_fd == g_connection_socks[session_nr], telnet[session_nr][it].base, i_name);
 							telnet[session_nr][it].write = telnet[session_nr][it].base;
 							telnet[session_nr][it].nb_chars = 0;
 						} else {
 							if ((size_t)telnet[session_nr][it].nb_chars >= telnet_str_bufsize - 1) {
 								*(telnet[session_nr][it].write) = '\0';
-								my_log_telnet(!g_mirror_mode && current_fd == g_connection_socks[session_nr], telnet[session_nr][it].base);
+								my_log_telnet(!g_mirror_mode && current_fd == g_connection_socks[session_nr], telnet[session_nr][it].base, i_name);
 								telnet[session_nr][it].write = telnet[session_nr][it].base;
 								telnet[session_nr][it].nb_chars = 0;
 								if (!telnet_max_line_size_hit) {
@@ -837,7 +839,10 @@ void almost_neverending_loop() {
 				} while(len > 0); // Until all received bytes have been sent
 			}
 		} // END for(current_fd)
-		
+
+// The code below was found to be wrong when telnet runs in "mode character",
+// that is the default under Windows. Having incomplete lines in a received
+// TCP frame is fine...
 /*    int it;*/
 /*    for (it = 0; it < 2; it++) {*/
 /*      if (telnet[session_nr][it].nb_chars >= 1) {*/
@@ -848,7 +853,7 @@ void almost_neverending_loop() {
 /*      }*/
 /*    }*/
 	} while (!run_once);
-	
+
 	os_closesocket(g_listen_sock); g_listen_sock=-1;
 }
 
@@ -983,10 +988,11 @@ void parse_options(int argc, char *argv[]) {
 		{"help", no_argument, NULL, 'h'},
 		{"version", no_argument, NULL, 'v'},
 		{"verbose", no_argument, NULL, 'V'},
-		{"quiet", no_argument, NULL, 'q'},		
+		{"quiet", no_argument, NULL, 'q'},
 		{"minimal-log", no_argument, NULL, 2},
 		{"ip-as-port", no_argument, NULL, 3},
 		{"connexe", required_argument, NULL, 4},
+		{"test-mode", required_argument, NULL, 5},
 		{"server", required_argument, NULL, 's'},
 		{"mirror", no_argument, NULL, 'm'},
 		{"listen-port", required_argument, NULL, 'p'},
@@ -1045,7 +1051,7 @@ void parse_options(int argc, char *argv[]) {
 				}
 				server_name_set = TRUE;
 				break;
-				
+
 			case 'm':
 				g_mirror_mode = TRUE;
 				break;
@@ -1081,7 +1087,11 @@ void parse_options(int argc, char *argv[]) {
 			case 4: // connexe
 				strlcpy(connexe, optarg, sizeof(connexe)); // NOTE: BSD strlcpy safer than strncpy
 				break;
-				
+
+			case 5:
+				test_mode = atoi(optarg);
+				break;
+
 			case 'l':
 				strlcpy(logfile, optarg, sizeof(logfile)); // NOTE: BSD strlcpy safer than strncpy
 				break;
@@ -1144,9 +1154,14 @@ int main(int argc, char *argv[]) {
 #if !defined(_WIN32) && !defined(_WIN64)
 	signal(SIGCHLD, sigchld_handler);
 #endif
-	
+
 	// my_log_open(); // NOTE: Now automatically opened on first use, and subsequently reopened every hour (for log rotation)
-	my_logs(LL_ERROR, LP_DATETIME, PACKAGE_STRING " start"); // Always log the important event of starting
+	if (!test_mode) {
+		my_logs(LL_ERROR, LP_DATETIME, PACKAGE_STRING " start"); // Always log the important event of starting
+	} else {
+			// Don't log program version in test mode, to avoid useless output changes (in test suite) when version changes
+		my_logs(LL_ERROR, LP_DATETIME, PACKAGE_NAME " start"); // Always log the important event of starting
+	}
 
 		// Just to call WSAStartup...
 	os_init_network();
