@@ -317,7 +317,7 @@ char *get_nth_logname(char *logname, const size_t len, const char *prefix, int i
 //
 void my_log_core_output(const char *s) {
 	if (opt_rotate_log) {
-		float lim_kb = ((float)opt_rotate_log_size_kb - .2) / ((float)opt_rotate_log_nb_files + 1);
+		float lim_kb = ((float)opt_rotate_log_size_kb - .2f) / ((float)opt_rotate_log_nb_files + 1);
 		long pos;
 		float ls_kb = -1;
 		if (g_log_fd != NULL) {
@@ -1119,10 +1119,13 @@ void printhelp() {
 	printf("  -l  --log-file      Log file (default: %s)\n", DEFAULT_LOGFILE);
 	printf("      --rotate-log    Rotate log files adding .n to name and cycling through files\n");
 	printf("                      Off by default.\n");
+	printf("                      .1 is the most recent file in the rotation, .n the oldest.\n");
 	printf("      --rotate-log-size-kb  Total size of log files when --rotate-log is used\n");
 	printf("                            %lu by default.\n", (long unsigned)DEFAULT_ROTATE_LOG_SIZE_KB);
+	printf("                            Implies --rotate-log\n");
 	printf("      --rotate-log-nb-files Number of files to cycle through when --rotate-log\n");
 	printf("                            is used. %d by default.\n", DEFAULT_ROTATE_LOG_NB_FILES);
+	printf("                            Implies --rotate-log\n");
 	printf("  -n  --nodisplay-log Don't print the log on the screen\n");
 }
 
@@ -1275,10 +1278,12 @@ void parse_options(int argc, char *argv[]) {
 
 			case 7:
 				opt_rotate_log_size_kb = strtol(optarg, NULL, 0);
+				opt_rotate_log = TRUE;
 				break;
 
 			case 8:
 				opt_rotate_log_nb_files = atoi(optarg);
+				opt_rotate_log = TRUE;
 				break;
 
 			case 'l':
@@ -1326,7 +1331,7 @@ void parse_options(int argc, char *argv[]) {
 	check_bounds_int(opt_connect_timeout, TRUE, 1, FALSE, 0, "Illegal timeout value");
 	if (opt_rotate_log) {
 		check_bounds_ssize_t(opt_rotate_log_size_kb, TRUE, MIN_ROTATE_LOG_SIZE_KB,
-			TRUE, MAX_ROTATE_LOG_SIZE_KB, "Illegal --rotate-log-size-bytes value");
+			TRUE, MAX_ROTATE_LOG_SIZE_KB, "Illegal --rotate-log-size-kb value");
 		check_bounds_int(opt_rotate_log_nb_files, TRUE, 1,
 			TRUE, MAX_ROTATE_LOG_NB_FILES, "Illegal --rotate-log-nb-files value");
 	}
