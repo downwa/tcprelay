@@ -27,7 +27,7 @@ Section: User Commands  (1)<BR>Updated: version 1.3.2<BR><A HREF="#index">Index<
 
 <DL COMPACT>
 <DT>tcprelay relays TCP traffic between a server and a client, logging all<DD>
-exchanged data in between.
+data exchanged in between.
 <DT>Can manage multiple sessions in parallel since version 1.3.<DD>
 </DL>
 <A NAME="lbAE">&nbsp;</A>
@@ -42,18 +42,6 @@ Display a quick help screen and exit.
 
 <DD>
 Display version information and exit.
-<DT><B>-V,&nbsp;--verbose</B>
-
-<DD>
-Be more talkative.
-<DT><B>--minimal-log</B>
-
-<DD>
-Don't log data, only connection info.
-<DT><B>-q,&nbsp;--quiet</B>
-
-<DD>
-Be less talkative.
 <DT><B>-s,&nbsp;--server&nbsp;</B><I>server</I>
 
 <DD>
@@ -102,11 +90,86 @@ Use last byte of IP to form source port when connecting to server: try up to
 <DD>
 Fork an external program for every new connection. Command will have client IP
 address passed as argment
+<DT><B>-V,&nbsp;--verbose</B>
+
+<DD>
+Be more talkative.
+<DT><B>--minimal-log</B>
+
+<DD>
+Don't log data, only connection info.
+<DT><B>-q,&nbsp;--quiet</B>
+
+<DD>
+Be less talkative.
 <DT><B>-l,&nbsp;--log-file&nbsp;</B><I>file</I>
 
 <DD>
 Write the log in <I>file</I>. tcprelay.log (in current working directory)
 by default.
+<DT><B>--rotate-log</B>
+
+<DD>
+Rotate log files, adding .[1..n] to the log name (before extension)
+and cycling through files. Off by default.
+<BR>
+
+.1 is the most recent file in the rotation, .n the oldest.
+With the default number of log files (7, see <B>--rotate-log-nb-files</B>
+below) and the default log name (tcprelay.log, see <B>-l</B> above), each log
+rotation works this way:
+<BR>
+
+<BR>&nbsp;&nbsp;tcprelay.7.log&nbsp;is&nbsp;deleted
+<BR>
+
+<BR>&nbsp;&nbsp;tcprelay.6.log&nbsp;is&nbsp;renamed&nbsp;as&nbsp;tcprelay.7.log
+<BR>
+
+<BR>&nbsp;&nbsp;tcprelay.5.log&nbsp;is&nbsp;renamed&nbsp;as&nbsp;tcprelay.6.log
+<BR>
+
+<BR>&nbsp;&nbsp;&nbsp;&nbsp;...
+<BR>
+
+<BR>&nbsp;&nbsp;tcprelay.1.log&nbsp;is&nbsp;renamed&nbsp;as&nbsp;tcprelay.2.log
+<BR>
+
+<BR>&nbsp;&nbsp;tcprelay.log&nbsp;is&nbsp;renamed&nbsp;as&nbsp;tcprelay.1.log
+<BR>
+
+<BR>&nbsp;&nbsp;tcprelay.log&nbsp;is&nbsp;recreated
+<BR>
+
+<BR>&nbsp;&nbsp;Each&nbsp;log&nbsp;file&nbsp;has&nbsp;a&nbsp;size&nbsp;(in&nbsp;average)&nbsp;close&nbsp;to
+<BR>
+
+<BR>&nbsp;&nbsp;(rotate-log-size-kb&nbsp;/&nbsp;(rotate-log-nb-files&nbsp;+&nbsp;1))
+<BR>
+
+<BR>&nbsp;&nbsp;=&gt;&nbsp;by&nbsp;default,&nbsp;10MB&nbsp;/&nbsp;8&nbsp;=&nbsp;1.25MB
+<BR>
+
+<BR>&nbsp;&nbsp;The&nbsp;rotation&nbsp;occurs&nbsp;at&nbsp;the&nbsp;time&nbsp;tcprelay.log
+<BR>
+
+<BR>&nbsp;&nbsp;reaches&nbsp;this&nbsp;average&nbsp;size.
+<BR>
+
+<DT><B>--rotate-log-size-kb</B>
+
+<DD>
+Total size of log files in Kilo-bytes while rotating logs. 10240 by default (10MB).
+<BR>
+
+Implies --rotate-log
+<DT><B>--rotate-log-nb-files</B>
+
+<DD>
+Number of files to cycle through while rotating logs. 7 by default.
+<BR>
+
+Implies --rotate-log
 <DT><B>-n,&nbsp;--nodisplay-log</B>
 
 <DD>
@@ -142,6 +205,6 @@ Don't output the log on the screen. Done by default.
 This document was created by
 <A HREF="/cgi-bin/man/man2html">man2html</A>,
 using the manual pages.<BR>
-Time: 07:19:19 GMT, April 06, 2014
+Time: 20:19:32 GMT, April 17, 2014
 </BODY>
 </HTML>

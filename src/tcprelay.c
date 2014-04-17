@@ -1097,36 +1097,35 @@ void option_error(const char *s) {
 void printhelp() {
 	printf("Usage: " PACKAGE_NAME " -s server[:port] -p port [options...]\n\n");
 	printf("Accept incoming connections and redirect them to the specified server.\n\n");
-	printf("  -h  --help          Display this help text\n");
-	printf("  -v  --version       Display version information and exit\n");
-	printf("  -V  --verbose       Be more talkative\n");
-	printf("      --minimal-log   Don't log data, only connection info\n");
-	printf("  -q  --quiet         Be less talkative\n");
-	printf("  -s  --server        Server to connect to, syntax: server_name:port\n");
-	printf("  -m  --mirror        Mirror mode. Don't connect to a server,\n");
-	printf("                      simply send back received bytes to the client.\n");
-	printf("                      Assumed if no server is provided.\n");
-	printf("  -p  --listen-port   Port to listen to, it is the server port by default\n");
-	printf("  -r  --run-once      Do one run and exit\n");
-	printf("  -t  --telnet        Log trafic assuming data is telnet-style\n");
-	printf("  -b  --bufsize       Size of buffer in bytes for network data (default: %u)\n", DEFAULT_BUFFER_SIZE);
-	printf("      --timeout       Timeout in seconds to connect to server (default: %i)\n", DEFAULT_CONNECT_TIMEOUT);
-	printf("      --ip-as-port    Use last byte of IP to form source port when connecting to server:\n");
-	printf("                      Try up to 252 times using this formula (where ipa is the last\n");
-	printf("                      IP byte): p = 1024 + (256 * n) + ipa\n");
-	printf("      --connexe       Fork an external program for every new connection\n");
-	printf("                      Command will have client IP address passed as argment\n");
-	printf("  -l  --log-file      Log file (default: %s)\n", DEFAULT_LOGFILE);
-	printf("      --rotate-log    Rotate log files adding .n to name and cycling through files\n");
-	printf("                      Off by default.\n");
-	printf("                      .1 is the most recent file in the rotation, .n the oldest.\n");
-	printf("      --rotate-log-size-kb  Total size of log files when --rotate-log is used\n");
-	printf("                            %lu by default.\n", (long unsigned)DEFAULT_ROTATE_LOG_SIZE_KB);
-	printf("                            Implies --rotate-log\n");
-	printf("      --rotate-log-nb-files Number of files to cycle through when --rotate-log\n");
-	printf("                            is used. %d by default.\n", DEFAULT_ROTATE_LOG_NB_FILES);
-	printf("                            Implies --rotate-log\n");
-	printf("  -n  --nodisplay-log Don't print the log on the screen\n");
+	printf("  -h  --help            Display this help text\n");
+	printf("  -v  --version         Display version information and exit\n");
+	printf("  -s  --server          Server to connect to, syntax: server_name:port\n");
+	printf("  -m  --mirror          Mirror mode. Don't connect to a server,\n");
+	printf("                        simply send back received bytes to the client.\n");
+	printf("                        Assumed if no server is provided.\n");
+	printf("  -p  --listen-port     Port to listen to, it is the server port by default\n");
+	printf("  -r  --run-once        Do one run and exit\n");
+	printf("  -t  --telnet          Log trafic assuming data is telnet-style\n");
+	printf("  -b  --bufsize         Size of buffer in bytes for network data (default: %u)\n", DEFAULT_BUFFER_SIZE);
+	printf("      --timeout         Timeout in seconds to connect to server (default: %i)\n", DEFAULT_CONNECT_TIMEOUT);
+	printf("      --ip-as-port      Use last byte of IP to form source port when connecting to server:\n");
+	printf("                        Try up to 252 times using this formula (where ipa is the last\n");
+	printf("                        IP byte): p = 1024 + (256 * n) + ipa\n");
+	printf("      --connexe         Fork an external program for every new connection\n");
+	printf("                        Command will have client IP address passed as argment\n\n");
+	printf("  -V  --verbose         Be more talkative\n");
+	printf("      --minimal-log     Don't log data, only connection info\n");
+	printf("  -q  --quiet           Be less talkative\n");
+	printf("  -l  --log-file        Log file (default: %s)\n", DEFAULT_LOGFILE);
+	printf("  --rotate-log          Rotate log files, adding .[1..n] to the log name (before extension)\n");
+	printf("                        and cycling through files. Off by default.\n");
+	printf("                        .1 is the most recent file in the rotation, .n the oldest.\n");
+	printf("  --rotate-log-size-kb  Total size of log files in Kilo-bytes while rotating logs.\n");
+	printf("                        %lu by default. Implies --rotate-log.\n",
+		(long unsigned)DEFAULT_ROTATE_LOG_SIZE_KB);
+	printf("  --rotate-log-nb-files Number of extra files to cycle through while rotating logs.\n");
+	printf("                        %d by default. Implies --rotate-log.\n", DEFAULT_ROTATE_LOG_NB_FILES);
+	printf("  -n  --nodisplay-log Don't print the log on the screen\n\n");
 }
 
 //

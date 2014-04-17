@@ -1,4 +1,3 @@
-3) Update tcprelay.1 with new options (log rotation)
 
 
 ***

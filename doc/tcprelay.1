@@ -1,6 +1,6 @@
 .\" Written by Sébastien Millet
 .\"
-.TH tcprelay 1 "version 1.3.2" "March 2014"
+.TH tcprelay 1 "version 1.3.2" "April 2014"
 
 .SH NAME
 .TP
@@ -13,7 +13,7 @@ tcprelay \- a program to redirect TCP connections
 .SH DESCRIPTION
 .TP
 tcprelay relays TCP traffic between a server and a client, logging all
-exchanged data in between.
+data exchanged in between.
 .TP
 Can manage multiple sessions in parallel since version 1.3.
 .SH OPTIONS
@@ -23,15 +23,6 @@ Display a quick help screen and exit.
 .TP
 .B \-v\ \-\-version
 Display version information and exit.
-.TP
-.B \-V,\ \-\-verbose
-Be more talkative.
-.TP
-.B \-\-minimal\-log
-Don't log data, only connection info.
-.TP
-.B \-q,\ \-\-quiet
-Be less talkative.
 .TP
 .B \-s,\ \-\-server\ \fIserver\fP
 Connect to \fIserver\fP when an incoming connection is received on
@@ -72,9 +63,62 @@ Use last byte of IP to form source port when connecting to server: try up to
 Fork an external program for every new connection. Command will have client IP
 address passed as argment
 .TP
+.B \-V,\ \-\-verbose
+Be more talkative.
+.TP
+.B \-\-minimal\-log
+Don't log data, only connection info.
+.TP
+.B \-q,\ \-\-quiet
+Be less talkative.
+.TP
 .B \-l,\ \-\-log\-file\ \fIfile\fP
 Write the log in \fIfile\fP. tcprelay.log (in current working directory)
 by default.
+.TP
+.B \-\-rotate\-log
+Rotate log files, adding .[1..n] to the log name (before extension)
+and cycling through files. Off by default.
+.br
+\.1 is the most recent file in the rotation, .n the oldest.
+With the default number of log files (7, see \fB\-\-rotate\-log\-nb\-files\fP
+below) and the default log name (tcprelay.log, see \fB\-l\fP above), each log
+rotation works this way:
+.br
+  tcprelay.7.log is deleted
+.br
+  tcprelay.6.log is renamed as tcprelay.7.log
+.br
+  tcprelay.5.log is renamed as tcprelay.6.log
+.br
+    \.\.\.
+.br
+  tcprelay.1.log is renamed as tcprelay.2.log
+.br
+  tcprelay.log is renamed as tcprelay.1.log
+.br
+  tcprelay.log is recreated
+.br
+  Each log file has a size (in average) close to
+.br
+  (rotate\-log\-size\-kb / (rotate\-log\-nb\-files + 1))
+.br
+  => by default, 10MB / 8 = 1.25MB
+.br
+  The rotation occurs at the time tcprelay.log
+.br
+  reaches this average size.
+.br
+.TP
+.B \-\-rotate\-log\-size\-kb
+Total size of log files in Kilo-bytes while rotating logs. 10240 by default (10MB).
+.br
+Implies \-\-rotate\-log
+.TP
+.B \-\-rotate\-log\-nb\-files
+Number of files to cycle through while rotating logs. 7 by default.
+.br
+Implies \-\-rotate\-log
 .TP
 .B \-n,\ \-\-nodisplay\-log
 Don't output the log on the screen. Done by default.

@@ -8,14 +8,14 @@ echo "Telnet log" > $TLOG
 
 # 1. Start server
 
-echo "Will create 49 log files for a total size of 25KB"
+echo "Will create 7 log files for a total size of 10MB"
 
-$PRG -m -p $TESTPORT -n --telnet --test-mode 1 --rotate-log --rotate-log-size-kb 25 \
-	--rotate-log-nb-files 49 --log-file tcprelay.tmp &
+$PRG -m -p $TESTPORT -n --telnet --test-mode 1 \
+	--rotate-log-size-kb 1024 --log-file tcprelay.tmp &
 
 # 2. Perform tests
 
-for i in $(seq 1 300); do
+for i in $(seq 1 9000); do
 	cat telnet-input.txt | telnet localhost $TESTPORT >> $TLOG 2>&1
 done
 
