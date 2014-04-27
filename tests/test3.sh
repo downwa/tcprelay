@@ -8,7 +8,7 @@ echo "Telnet log" > $TLOG
 
 # 1. Start server
 
-echo "Will create 7 log files for a total size of 10MB"
+echo "Will create 7 log files for a total size of 1MB"
 
 $PRG -m -p $TESTPORT -n --telnet --test-mode 1 \
 	--rotate-log-size-kb 1024 --log-file tcprelay.tmp &
